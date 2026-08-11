@@ -1,0 +1,24 @@
+<svg width="220" height="220" viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">
+  <rect width="220" height="220" fill="transparent"/>
+
+  <g fill="none" stroke="#111111" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- R -->
+    <path d="M55 45V175"/>
+    <path d="M55 45H95C112 45 122 57 122 72C122 87 112 99 95 99H55"/>
+    <path d="M88 99L125 175"/>
+
+    <!-- S -->
+    <path d="M145 60
+             C175 30 205 45 205 68
+             C205 90 175 95 160 102
+             C140 110 140 135 165 145
+             C185 153 203 145 205 125"/>
+
+    <!-- U -->
+    <path d="M135 45V145
+             C135 168 150 180 170 180
+             C190 180 205 168 205 145V45"/>
+
+  </g>
+</svg>

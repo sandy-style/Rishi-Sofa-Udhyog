@@ -1,0 +1,9 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Edu+VIC+WA+NT+Hand:wght@400..700&family=Manrope:wght@200..800&display=swap');
+.beautify{
+     font-family: "Edu VIC WA NT Hand"
+}
+.para{
+    font-family: "Manrope"
+}
+

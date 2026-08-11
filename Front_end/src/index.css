@@ -1,0 +1,20 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+a.active  {
+  color:  #C99658;
+}
+body {
+  background-color: #F7F3EE;
+}
+.font-heading {
+  font-family: "Cormorant Garamond", serif;
+  
+}
+.font-manrope{
+  font-family: "Manrope";
+
+}
+::-webkit-scrollbar{
+  display: none;
+}
