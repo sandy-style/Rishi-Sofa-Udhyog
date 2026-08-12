@@ -3,14 +3,13 @@ import { assets } from "../assets/assets";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { ShopContext } from "../context/shopContext";
 
-const Navbar = () => {
+const Navbar = ({ setToken, setShowLogin, token }) => {
   const location = useLocation();
   const [menu, showMenu] = useState(false);
   const { setShowSearch, showSearch, getCartCount, navigate } =
     useContext(ShopContext);
-
   return (
-    <div className="flex items-center justify-around md:justify-between px-2 gap-3 md:px-12 font-manrope">
+    <div className="flex items-center justify-between md:justify-between px-2 gap-3 md:px-12 font-manrope">
       <img
         onClick={() => navigate("/")}
         className="w-13 md:w-23"
@@ -126,7 +125,7 @@ const Navbar = () => {
 
       {/* Menu end */}
 
-      <div className="flex items-center gap-6">
+      <div className="flex justify-end gap-6 items-center">
         <div
           className={`${location.pathname === "/collection" ? "block " : "hidden"}    flex items-center justify-center py-3 px-2`}
         >
@@ -148,18 +147,30 @@ const Navbar = () => {
             <img className="w-8" src={assets.cart_icon} alt="" />
           </div>
         </NavLink>
-        <Link to={"/login"}>
-          <button className="w-36 cursor-pointer md:rounded-2xl hover:bg-orange-50 hover:text-black  bg-black text-white px-2 py-2 text-sm rounded-xs">
-            Sign In / Register
-          </button>
-        </Link>
+        <div>
+          {!token ? (
+            <button
+              onClick={() => setShowLogin(true)}
+              className="w-36 hidden sm:block cursor-pointer md:rounded-2xl hover:bg-orange-50 hover:text-black  bg-black text-white px-2 py-2 text-sm rounded-xs"
+            >
+              Sign In / Register
+            </button>
+          ) : (
+            <button
+              onClick={() => setToken("")}
+              className="w-36 hidden sm:block cursor-pointer md:rounded-2xl hover:bg-orange-50 hover:text-black  bg-black text-white px-2 py-2 text-sm rounded-xs"
+            >
+              Log out
+            </button>
+          )}
+        </div>
+        <img
+          className="sm:hidden block w-6 "
+          onClick={() => showMenu(true)}
+          src={assets.menu_icon}
+          alt=""
+        />
       </div>
-      <img
-        className="sm:hidden block w-6"
-        onClick={() => showMenu(true)}
-        src={assets.menu_icon}
-        alt=""
-      />
     </div>
   );
 };
