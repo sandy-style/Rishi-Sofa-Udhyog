@@ -4,11 +4,12 @@ const authUser = async (req, res, next) => {
   const { token } = req.headers;
 
   if (!token) {
-    return req.json({ success: false, message: "please log In" });
+    return res.json({ success: false, message: "please log In" });
   }
   try {
     const tokenDecode = jwt.verify(token, process.env.JWT_SECRET);
-    req.body.userId = tokenDecode.id;
+
+    req.userId = tokenDecode.id;
     next();
   } catch (error) {
     console.log(error);

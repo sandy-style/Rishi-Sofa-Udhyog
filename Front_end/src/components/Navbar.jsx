@@ -8,6 +8,10 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
   const [menu, showMenu] = useState(false);
   const { setShowSearch, showSearch, getCartCount, navigate } =
     useContext(ShopContext);
+  const logoutHandler = async () => {
+    setToken("");
+    await window.location.reload();
+  };
   return (
     <div className="flex items-center justify-between md:justify-between px-2 gap-3 md:px-12 font-manrope">
       <img
@@ -157,7 +161,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             </button>
           ) : (
             <button
-              onClick={() => setToken("")}
+              onClick={logoutHandler}
               className="w-36 hidden sm:block cursor-pointer md:rounded-2xl hover:bg-orange-50 hover:text-black  bg-black text-white px-2 py-2 text-sm rounded-xs"
             >
               Log out

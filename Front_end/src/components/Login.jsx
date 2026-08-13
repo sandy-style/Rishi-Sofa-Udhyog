@@ -31,6 +31,7 @@ const Login = ({ setShowLogin, setToken }) => {
         setEmail("");
         setPassword("");
         toast.success(response.data.message);
+        window.location.reload();
       } else {
         toast.error(response.data.message);
       }
@@ -49,11 +50,12 @@ const Login = ({ setShowLogin, setToken }) => {
         setToken(response.data.token);
         setShowLogin(false);
         toast.success(response.data.message);
+        window.location.reload();
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error);
       console.log(error);
     }
   };

@@ -28,6 +28,7 @@ const Cart = () => {
       </div>
       {cartData.map((item, index) => {
         const productData = products.find((items) => item._id == items._id);
+        if (!productData) return null;
         return (
           <div
             key={index}

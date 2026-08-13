@@ -6,9 +6,10 @@ import ProductCard from "../components/ProductCard";
 import RelatedProducts from "../components/RelatedProducts";
 import { FiShoppingCart } from "react-icons/fi";
 import { Link } from "react-router-dom";
-const Product = () => {
+const Product = ({ token }) => {
   const { productId } = useParams();
-  const { products, currency, addToCart } = useContext(ShopContext);
+  const { products, currency, addToCart, getProductsFromCart } =
+    useContext(ShopContext);
   const [productData, setProductData] = useState(false);
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [image, setImage] = useState("");
@@ -22,6 +23,7 @@ const Product = () => {
 
   useEffect(() => {
     fetchProductData();
+    getProductsFromCart();
   }, [products, productId]);
 
   return productData ? (
@@ -102,7 +104,7 @@ const Product = () => {
               {" "}
               <div>
                 <button
-                  onClick={() => addToCart(productId)}
+                  onClick={() => addToCart(productId, token)}
                   className="group relative overflow-hidden  border border-[#C99658] bg-[#C99658] px-10 py-4 font-manrope text-lg font-semibold text-white shadow-sm transition-all duration-300 hover:shadow-xl"
                 >
                   <span className="relative z-10 flex items-center gap-3 transition-colors duration-300 ">

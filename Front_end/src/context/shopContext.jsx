@@ -3,6 +3,7 @@ import { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { backendUrl } from "../App";
+import { toast } from "react-toastify";
 export const ShopContext = createContext();
 const ShopContextProvider = (props) => {
   const [showSearch, setShowSearch] = useState(false);
@@ -12,6 +13,33 @@ const ShopContextProvider = (props) => {
   const [cartItem, setCartItem] = useState({});
   const navigate = useNavigate();
   const [products, setProducts] = useState([]);
+  const [token, setToken] = useState(
+    localStorage.getItem("token") ? localStorage.getItem("token") : "",
+  );
+
+  const getProductsFromCart = async () => {
+    console.log(token);
+    try {
+      const response = await axios.get(
+        backendUrl + "/api/cart/get",
+
+        {
+          headers: {
+            token: token,
+          },
+        },
+      );
+      if (response.data.success) {
+        console.log(response.data.message);
+        setCartItem(response.data.cartData);
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      console.log(error);
+    }
+  };
 
   const productFetch = async () => {
     try {
@@ -25,13 +53,34 @@ const ShopContextProvider = (props) => {
   };
 
   const addToCart = async (productId) => {
-    let cartData = structuredClone(cartItem);
-    if (cartData[productId]) {
-      cartData[productId] += 1;
-    } else {
-      cartData[productId] = 1;
+    try {
+      console.log(token);
+      const response = await axios.post(
+        backendUrl + "/api/cart/add",
+
+        { itemId: productId },
+        {
+          headers: {
+            token: token,
+          },
+        },
+      );
+      if (response.data.success) {
+        toast.success(response.data.message);
+        let cartData = structuredClone(cartItem);
+        if (cartData[productId]) {
+          cartData[productId] += 1;
+        } else {
+          cartData[productId] = 1;
+        }
+        setCartItem(cartData);
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      console.log(error);
     }
-    setCartItem(cartData);
   };
 
   const getCartCount = () => {
@@ -62,7 +111,14 @@ const ShopContextProvider = (props) => {
     productFetch();
   }, []);
 
+  useEffect(() => {
+    if (token) {
+      getProductsFromCart();
+    }
+  }, [token]);
+
   const value = {
+    getProductsFromCart,
     products,
     currency,
     delievery_fee,
