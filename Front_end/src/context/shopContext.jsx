@@ -92,15 +92,46 @@ const ShopContextProvider = (props) => {
     return totalCount;
   };
 
-  const updateCart = (itemId, quantity) => {
-    let cartData = structuredClone(cartItem);
-    cartData[itemId] = quantity;
-    setCartItem(cartData);
+  const updateCart = async (itemId, quantity) => {
+    try {
+      const response = await axios.post(
+        backendUrl + "/api/cart/update",
+        {
+          itemId: itemId,
+          quantity: quantity,
+        },
+        {
+          headers: {
+            token,
+          },
+        },
+      );
+      if (response.data.success) {
+        let cartData = structuredClone(cartItem);
+
+        if (quantity === 0) {
+          delete cartData[itemId];
+        } else {
+          cartData[itemId] = quantity;
+        }
+
+        setCartItem(cartData);
+        console.log("update success");
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
   };
   const totalAmount = () => {
     let totalAmount = 0;
     for (const items in cartItem) {
       let itemInfo = products.find((item) => item._id === items);
+      if (!itemInfo) {
+        continue;
+      }
       totalAmount += itemInfo.price * cartItem[items];
     }
     console.log(totalAmount);
@@ -119,6 +150,7 @@ const ShopContextProvider = (props) => {
 
   const value = {
     getProductsFromCart,
+    setCartItem,
     products,
     currency,
     delievery_fee,

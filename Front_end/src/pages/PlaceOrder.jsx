@@ -1,11 +1,89 @@
 import React, { useState } from "react";
 import CartTotal from "../components/CartTotal";
 import { assets } from "../assets/assets";
+import axios from "axios";
+import { backendUrl } from "../App";
+import { useContext } from "react";
+import { ShopContext } from "../context/shopContext";
+import { toast } from "react-toastify";
 const PlaceOrder = () => {
+  const token = localStorage.getItem("token") || "";
+  const {
+    totalAmount,
+    delievery_fee,
+    setCartItem,
+    cartItem,
+    navigate,
+    products,
+  } = useContext(ShopContext);
   const [payMethod, setPayMethod] = useState("COD");
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    street: "",
+    city: "",
+    province: "",
+    country: "Nepal",
+  });
 
+  const onChangeHandler = (event) => {
+    const name = event.target.name;
+    const value = event.target.value;
+
+    setFormData((data) => ({ ...data, [name]: value }));
+  };
+
+  const onSubmitHandler = async (e) => {
+    e.preventDefault();
+    try {
+      let orderItems = [];
+
+      for (const itemId in cartItem) {
+        const product = products.find((p) => p._id === itemId);
+        console.log(itemId);
+        console.log(cartItem[itemId]);
+        console.log(cartItem);
+        orderItems.push({
+          productId: product._id,
+          name: product.name,
+          price: product.price,
+          image: product.image,
+          quantity: cartItem[itemId],
+        });
+      }
+      let orderData = {
+        items: orderItems,
+        address: formData,
+        amount: totalAmount() + delievery_fee,
+      };
+      switch (payMethod) {
+        case "COD":
+          const response = await axios.post(
+            backendUrl + "/api/order/place",
+            orderData,
+            { headers: { token } },
+          );
+          if (response.data.success) {
+            toast.success(response.data.message);
+            setCartItem({});
+            navigate("/orders");
+          } else {
+            toast.error(response.data.message);
+          }
+          break;
+
+        default:
+          break;
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(error.message);
+    }
+  };
   return (
-    <div>
+    <form onSubmit={onSubmitHandler}>
       <div className="min-h-screen  py-10 px-4 sm:px-6 lg:px-10">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
           {/* ================= DELIVERY FORM ================= */}
@@ -19,10 +97,13 @@ const PlaceOrder = () => {
               </p>
             </div>
 
-            <form className="space-y-5">
+            <div className="space-y-5">
               {/* First & Last Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
+                  onChange={onChangeHandler}
+                  name="firstName"
+                  value={formData.firstName}
                   type="text"
                   placeholder="First Name"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
@@ -30,6 +111,9 @@ const PlaceOrder = () => {
                 />
 
                 <input
+                  onChange={onChangeHandler}
+                  name="lastName"
+                  value={formData.lastName}
                   type="text"
                   placeholder="Last Name"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
@@ -40,6 +124,9 @@ const PlaceOrder = () => {
               {/* Email & Phone */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
+                  onChange={onChangeHandler}
+                  name="email"
+                  value={formData.email}
                   type="email"
                   placeholder="Email Address"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
@@ -47,6 +134,9 @@ const PlaceOrder = () => {
                 />
 
                 <input
+                  onChange={onChangeHandler}
+                  name="phone"
+                  value={formData.phone}
                   type="tel"
                   placeholder="Phone Number"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
@@ -56,6 +146,9 @@ const PlaceOrder = () => {
 
               {/* Address */}
               <input
+                onChange={onChangeHandler}
+                name="street"
+                value={formData.street}
                 type="text"
                 placeholder="Street Address"
                 className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
@@ -73,6 +166,9 @@ const PlaceOrder = () => {
               {/* City & Province */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
+                  onChange={onChangeHandler}
+                  name="city"
+                  value={formData.city}
                   type="text"
                   placeholder="City"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
@@ -80,29 +176,25 @@ const PlaceOrder = () => {
                 />
 
                 <select
+                  onChange={onChangeHandler}
+                  name="city"
+                  value={formData.city}
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             outline-none focus:border-[#C99658] transition text-[#6D655D]"
                 >
                   <option>Select Province</option>
-                  <option>Koshi</option>
-                  <option>Madhesh</option>
-                  <option>Bagmati</option>
-                  <option>Gandaki</option>
-                  <option>Lumbini</option>
-                  <option>Karnali</option>
-                  <option>Sudurpashchim</option>
+                  <option value={"Koshi"}>Koshi</option>
+                  <option value={"Madesh"}>Madhesh</option>
+                  <option value={"Bagmati"}>Bagmati</option>
+                  <option value={"Gandaki"}>Gandaki</option>
+                  <option value={"Lumbini"}>Lumbini</option>
+                  <option value={"Karnali"}>Karnali</option>
+                  <option value={"Sudurpaschim"}>Sudurpashchim</option>
                 </select>
               </div>
 
               {/* Postal Code & Country */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input
-                  type="text"
-                  placeholder="Postal Code"
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
-                />
-
                 <input
                   type="text"
                   value="Nepal"
@@ -111,7 +203,7 @@ const PlaceOrder = () => {
             bg-[#EFEAE3] text-[#6D655D]"
                 />
               </div>
-            </form>
+            </div>
           </div>
 
           {/* ================= CART TOTAL ================= */}
@@ -164,6 +256,7 @@ const PlaceOrder = () => {
               </div>
 
               <button
+                type="submit"
                 className="w-full mt-6 py-3 rounded-xl bg-[#231F1C] text-white
           hover:bg-[#C99658] hover:text-[#231F1C]
           transition-all duration-300 font-medium"
@@ -174,7 +267,7 @@ const PlaceOrder = () => {
           </div>
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 

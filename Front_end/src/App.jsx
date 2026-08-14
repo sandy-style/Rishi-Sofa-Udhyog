@@ -15,7 +15,7 @@ import Footer from "./components/Footer";
 import PlaceOrder from "./pages/PlaceOrder";
 export const backendUrl = import.meta.env.VITE_backend_url;
 const App = () => {
-  const [showLogin, setShowLogin] = useState(true);
+  const [showLogin, setShowLogin] = useState(false);
   const [token, setToken] = useState(
     localStorage.getItem("token") ? localStorage.getItem("token") : "",
   );
