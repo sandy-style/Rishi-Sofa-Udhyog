@@ -30,10 +30,25 @@ const placeOrderEsewa = async (req, res) => {};
 const placeOrderKhalti = async (req, res) => {};
 
 // all orders for admin panel
-const allOrders = async (req, res) => {};
+const allOrders = async (req, res) => {
+  try {
+    const orders = await orderModel.find({});
+    res.json({ success: true, orders, message: "successfully retrieved" });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
 
 // User order data for frontend
-const userOrders = async (req, res) => {};
+const userOrders = async (req, res) => {
+  try {
+    const userId = req.userId;
+    const orders = await orderModel.find({ userId });
+    res.json({ success: true, orders });
+  } catch (error) {
+    res.json({ success: false, message: error.message });
+  }
+};
 
 // update order status from admin panel
 const updateStatus = async (req, res) => {};

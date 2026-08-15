@@ -7,7 +7,6 @@ import { useContext } from "react";
 import { ShopContext } from "../context/shopContext";
 import { toast } from "react-toastify";
 const PlaceOrder = () => {
-  const token = localStorage.getItem("token") || "";
   const {
     totalAmount,
     delievery_fee,
@@ -15,6 +14,8 @@ const PlaceOrder = () => {
     cartItem,
     navigate,
     products,
+    token,
+    getCartCount,
   } = useContext(ShopContext);
   const [payMethod, setPayMethod] = useState("COD");
   const [formData, setFormData] = useState({
@@ -39,12 +40,15 @@ const PlaceOrder = () => {
     e.preventDefault();
     try {
       let orderItems = [];
+      if (getCartCount() === 0) {
+        navigate("/collection");
+        toast.error("Please add to cart");
+        return;
+      }
 
       for (const itemId in cartItem) {
         const product = products.find((p) => p._id === itemId);
-        console.log(itemId);
-        console.log(cartItem[itemId]);
-        console.log(cartItem);
+
         orderItems.push({
           productId: product._id,
           name: product.name,
@@ -108,6 +112,7 @@ const PlaceOrder = () => {
                   placeholder="First Name"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  required
                 />
 
                 <input
@@ -118,6 +123,7 @@ const PlaceOrder = () => {
                   placeholder="Last Name"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  required
                 />
               </div>
 
@@ -131,6 +137,7 @@ const PlaceOrder = () => {
                   placeholder="Email Address"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  required
                 />
 
                 <input
@@ -141,6 +148,7 @@ const PlaceOrder = () => {
                   placeholder="Phone Number"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  required
                 />
               </div>
 
@@ -153,6 +161,7 @@ const PlaceOrder = () => {
                 placeholder="Street Address"
                 className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
           placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                required
               />
 
               {/* Apartment */}
@@ -173,14 +182,16 @@ const PlaceOrder = () => {
                   placeholder="City"
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  required
                 />
 
                 <select
                   onChange={onChangeHandler}
-                  name="city"
-                  value={formData.city}
+                  name="province"
+                  value={formData.province}
                   className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
             outline-none focus:border-[#C99658] transition text-[#6D655D]"
+                  required
                 >
                   <option>Select Province</option>
                   <option value={"Koshi"}>Koshi</option>

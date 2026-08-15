@@ -18,7 +18,6 @@ const ShopContextProvider = (props) => {
   );
 
   const getProductsFromCart = async () => {
-    console.log(token);
     try {
       const response = await axios.get(
         backendUrl + "/api/cart/get",
@@ -30,7 +29,6 @@ const ShopContextProvider = (props) => {
         },
       );
       if (response.data.success) {
-        console.log(response.data.message);
         setCartItem(response.data.cartData);
       } else {
         toast.error(response.data.message);
@@ -54,7 +52,6 @@ const ShopContextProvider = (props) => {
 
   const addToCart = async (productId) => {
     try {
-      console.log(token);
       const response = await axios.post(
         backendUrl + "/api/cart/add",
 
@@ -134,7 +131,6 @@ const ShopContextProvider = (props) => {
       }
       totalAmount += itemInfo.price * cartItem[items];
     }
-    console.log(totalAmount);
 
     return totalAmount;
   };
@@ -164,6 +160,7 @@ const ShopContextProvider = (props) => {
     updateCart,
     navigate,
     totalAmount,
+    token,
   };
   return (
     <ShopContext.Provider value={value}>{props.children}</ShopContext.Provider>

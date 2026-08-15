@@ -13,6 +13,7 @@ import Contact from "./pages/Contact";
 import Product from "./pages/Product";
 import Footer from "./components/Footer";
 import PlaceOrder from "./pages/PlaceOrder";
+import Orders from "./pages/Orders";
 export const backendUrl = import.meta.env.VITE_backend_url;
 const App = () => {
   const [showLogin, setShowLogin] = useState(false);
@@ -38,8 +39,8 @@ const App = () => {
             path="/product/:productId"
             element={<Product token={token} />}
           />
-
           <Route path="/placeorder" element={<PlaceOrder />} />
+          <Route path="/orders" element={<Orders />} />
         </Routes>
         <Footer />
       </div>
