@@ -6,6 +6,7 @@ import { backendUrl } from "../App";
 import { toast } from "react-toastify";
 const Orders = ({ token }) => {
   const [orders, setOrders] = useState([]);
+  const [count, setCount] = useState();
   const fetchAllOrders = async () => {
     if (!token) return null;
     try {
@@ -16,7 +17,30 @@ const Orders = ({ token }) => {
       );
       if (response.data.success) {
         console.log(response.data);
-        setOrders(response.data.orders);
+        const sortedOrders = [...response.data.orders].sort((a, b) => {
+          // Pending orders come first
+
+          if (a.status === "Order Placed" && b.status !== "Order Placed")
+            return -1;
+          if (a.status !== "Order Placed" && b.status === "Order Placed")
+            return 1;
+
+          // If both are pending, older order comes first
+          if (a.status === "Order Placed" && b.status === "Order Placed") {
+            return new Date(a.date) - new Date(b.date);
+          }
+
+          // For non-pending orders, newest first
+          return new Date(b.date) - new Date(a.date);
+        });
+        console.log(sortedOrders);
+        const counter = sortedOrders.filter(
+          (item) => item.status === "Order Placed",
+        ).length;
+
+        setCount(counter);
+        console.log(count);
+        setOrders(sortedOrders);
       } else {
         toast.error(response.data.message);
       }
@@ -25,6 +49,26 @@ const Orders = ({ token }) => {
       toast.error(error.message);
     }
   };
+
+  const orderStatusHandler = async (e, orderId) => {
+    try {
+      const status = e.target.value;
+      const response = await axios.post(
+        backendUrl + "/api/order/status",
+        { orderId, status },
+        { headers: { token } },
+      );
+      if (response.data.success) {
+        await fetchAllOrders();
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+      console.log(error);
+    }
+  };
+
   const [showCustomerInfo, setShowCustomerInfo] = useState(null);
 
   useEffect(() => {
@@ -49,6 +93,13 @@ const Orders = ({ token }) => {
                 Manage deliveries, customers and order information.
               </p>
             </div>
+            <div className="text-center">
+              <p className="text-2xl font-medium text-[#292521]">{count}</p>
+
+              <p className="text-xs uppercase tracking-wider text-[#9b8f82]">
+                Pending
+              </p>
+            </div>
 
             <div className="text-right">
               <p className="text-2xl font-medium text-[#292521]">
@@ -64,9 +115,9 @@ const Orders = ({ token }) => {
 
         {/* ORDER LIST */}
         <div className="space-y-8">
-          {orders.map((order, index) => (
+          {orders.map((order) => (
             <div
-              key={index}
+              key={order._id}
               className="overflow-hidden border border-[#ddd6cd] bg-[#fbfaf8]"
             >
               {/* ORDER HEADER */}
@@ -74,7 +125,7 @@ const Orders = ({ token }) => {
                 <div>
                   <div className="flex items-center gap-3">
                     <h2 className="text-sm font-medium text-[#292521]">
-                      #{order.id}
+                      #{order._id}
                     </h2>
 
                     <span className="h-1 w-1 rounded-full bg-[#b6aa9d]" />
@@ -119,14 +170,18 @@ const Orders = ({ token }) => {
 
                   {/* STATUS SELECT */}
                   <select
+                    onChange={(e) => orderStatusHandler(e, order._id)}
                     defaultValue={order.status}
                     className="cursor-pointer border border-[#d5cdc3] bg-white px-3 py-2 text-xs text-[#4e4740] outline-none focus:border-[#9b8f82]"
                   >
-                    <option>Processing</option>
-                    <option>Shipped</option>
-                    <option>Out for Delivery</option>
-                    <option>Delivered</option>
-                    <option>Cancelled</option>
+                    <option value={"Order Placed"}>Order Placed</option>
+                    <option value={"Processing"}>Processing</option>
+                    <option value={"Shipped"}>Shipped</option>
+                    <option value={"Out for Delievery"}>
+                      Out for Delivery
+                    </option>
+                    <option value={"Delivered"}>Delivered</option>
+                    <option value={"Cancelled"}>Cancelled</option>
                   </select>
                 </div>
               </div>
@@ -136,21 +191,21 @@ const Orders = ({ token }) => {
                 <button
                   onClick={() =>
                     setShowCustomerInfo(
-                      showCustomerInfo === order.id ? null : order.id,
+                      showCustomerInfo === order._id ? null : order._id,
                     )
                   }
                   className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-[#756b61] transition hover:text-[#292521]"
                 >
-                  <span>{showCustomerInfo === order.id ? "−" : "+"}</span>
+                  <span>{showCustomerInfo === order._id ? "−" : "+"}</span>
 
-                  {showCustomerInfo === order.id
+                  {showCustomerInfo === order._id
                     ? "Hide Customer Info"
                     : "Show Customer Info"}
                 </button>
               </div>
 
               {/* CUSTOMER INFORMATION */}
-              {showCustomerInfo === order.id && (
+              {showCustomerInfo === order._id && (
                 <div className="grid border-b border-[#e3ddd5] bg-[#faf8f5] lg:grid-cols-2">
                   {/* CUSTOMER */}
                   <div className="border-b border-[#e3ddd5] p-6 lg:border-b-0 lg:border-r">
@@ -205,7 +260,7 @@ const Orders = ({ token }) => {
                       <p>{order.address.street}</p>
 
                       <p>
-                        {order.address.city}, {order.customer.address.province}
+                        {order.address.city}, {order.address.province}
                       </p>
 
                       <p>{order.address.country} </p>

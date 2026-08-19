@@ -297,12 +297,10 @@ const Add = ({ token }) => {
 
             <div>
               <label className="font-medium">Price</label>
-
               <input
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 type="number"
-                defaultValue={25000}
                 placeholder="enter price"
                 className="mt-2 w-full rounded-xl border px-4 py-3 focus:ring-2 focus:ring-black"
               />
