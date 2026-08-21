@@ -82,5 +82,72 @@ const singleProduct = async (req, res) => {
     res.json({ success: false, message: error.message });
   }
 };
+const updateProduct = async (req, res) => {
+  try {
+    const { name, description, price, material, seating, bestSeller, stock } =
+      req.body;
+    const { id } = req.body;
+    const product = await productModel.findById(id);
+    if (!product) {
+      return res.json({ success: false, message: "product not found" });
+    }
+    product.name = name;
+    product.description = description;
+    product.material = material;
+    product.seating = seating;
+    product.price = Number(price);
+    product.stock = stock === "true" ? true : false;
+    product.bestSeller = bestSeller === "true" ? true : false;
+    let images = [...product.image];
 
-export { listProducts, removeProduct, addProduct, singleProduct };
+    if (req.files?.image1) {
+      const result = await cloudinary.uploader.upload(
+        req.files.image1[0].path,
+        { resource_type: "image" },
+      );
+
+      images[0] = result.secure_url;
+    }
+
+    if (req.files?.image2) {
+      const result = await cloudinary.uploader.upload(
+        req.files.image2[0].path,
+        { resource_type: "image" },
+      );
+
+      images[1] = result.secure_url;
+    }
+
+    if (req.files?.image3) {
+      const result = await cloudinary.uploader.upload(
+        req.files.image3[0].path,
+        { resource_type: "image" },
+      );
+
+      images[2] = result.secure_url;
+    }
+
+    if (req.files?.image4) {
+      const result = await cloudinary.uploader.upload(
+        req.files.image4[0].path,
+        { resource_type: "image" },
+      );
+
+      images[3] = result.secure_url;
+    }
+
+    product.image = images;
+    await product.save();
+    return res.json({ success: true, message: "Updated successfully" });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+export {
+  listProducts,
+  removeProduct,
+  addProduct,
+  singleProduct,
+  updateProduct,
+};
