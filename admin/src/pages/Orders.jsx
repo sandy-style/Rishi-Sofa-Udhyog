@@ -4,24 +4,35 @@ import axios from "axios";
 import { useState } from "react";
 import { backendUrl } from "../App";
 import { toast } from "react-toastify";
+
 const Orders = ({ token }) => {
   const [orders, setOrders] = useState([]);
-  const [count, setCount] = useState();
+
+  const [pendingCount, setPendingCount] = useState(0);
+  const [processingCount, setProcessingCount] = useState(0);
+  const [outForDelieveryCount, setOutForDelieveryCount] = useState(0);
+  const [cancelledCount, setCancelledCount] = useState(0);
+  const [delieveredCount, setDelieveredCount] = useState(0);
+
+  // Current selected filter
+  const [activeFilter, setActiveFilter] = useState("All");
+
   const fetchAllOrders = async () => {
     if (!token) return null;
+
     try {
       const response = await axios.post(
         backendUrl + "/api/order/list",
         {},
         { headers: { token } },
       );
+
       if (response.data.success) {
-        console.log(response.data);
         const sortedOrders = [...response.data.orders].sort((a, b) => {
           // Pending orders come first
-
           if (a.status === "Order Placed" && b.status !== "Order Placed")
             return -1;
+
           if (a.status !== "Order Placed" && b.status === "Order Placed")
             return 1;
 
@@ -33,19 +44,49 @@ const Orders = ({ token }) => {
           // For non-pending orders, newest first
           return new Date(b.date) - new Date(a.date);
         });
-        console.log(sortedOrders);
-        const counter = sortedOrders.filter(
+
+        let counter;
+
+        // Pending
+        counter = sortedOrders.filter(
           (item) => item.status === "Order Placed",
         ).length;
 
-        setCount(counter);
-        console.log(count);
+        setPendingCount(counter);
+
+        // Processing
+        counter = sortedOrders.filter(
+          (item) => item.status === "Processing",
+        ).length;
+
+        setProcessingCount(counter);
+
+        // Out for Delivery
+        counter = sortedOrders.filter(
+          (item) => item.status === "Out for Delievery",
+        ).length;
+
+        setOutForDelieveryCount(counter);
+
+        // Delivered
+        counter = sortedOrders.filter(
+          (item) => item.status === "Delivered",
+        ).length;
+
+        setDelieveredCount(counter);
+
+        // Cancelled
+        counter = sortedOrders.filter(
+          (item) => item.status === "Cancelled",
+        ).length;
+
+        setCancelledCount(counter);
+
         setOrders(sortedOrders);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log(error);
       toast.error(error.message);
     }
   };
@@ -53,11 +94,13 @@ const Orders = ({ token }) => {
   const orderStatusHandler = async (e, orderId) => {
     try {
       const status = e.target.value;
+
       const response = await axios.post(
         backendUrl + "/api/order/status",
         { orderId, status },
         { headers: { token } },
       );
+
       if (response.data.success) {
         await fetchAllOrders();
       } else {
@@ -74,8 +117,15 @@ const Orders = ({ token }) => {
   useEffect(() => {
     fetchAllOrders();
   }, [token]);
+
+  // FILTER ORDERS
+  const filteredOrders =
+    activeFilter === "All"
+      ? orders
+      : orders.filter((order) => order.status === activeFilter);
+
   return (
-    <div className="min-h-screen  px-5 py-10 sm:px-8 lg:px-12">
+    <div className="min-h-screen px-5 py-10 sm:px-8 lg:px-12">
       <div className="mx-auto max-w-7xl">
         {/* PAGE HEADER */}
         <div className="mb-10">
@@ -93,15 +143,106 @@ const Orders = ({ token }) => {
                 Manage deliveries, customers and order information.
               </p>
             </div>
-            <div className="text-center">
-              <p className="text-2xl font-medium text-[#292521]">{count}</p>
+
+            {/* PENDING */}
+            <div
+              onClick={() => setActiveFilter("Order Placed")}
+              className={`cursor-pointer text-center transition ${
+                activeFilter === "Order Placed"
+                  ? "scale-105 opacity-100"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              <p className="text-2xl font-medium text-[#292521]">
+                {pendingCount}
+              </p>
 
               <p className="text-xs uppercase tracking-wider text-[#9b8f82]">
                 Pending
               </p>
             </div>
 
-            <div className="text-right">
+            {/* PROCESSING */}
+            <div
+              onClick={() => setActiveFilter("Processing")}
+              className={`cursor-pointer text-right transition ${
+                activeFilter === "Processing"
+                  ? "scale-105 opacity-100"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              <p className="text-2xl font-medium text-[#292521]">
+                {processingCount}
+              </p>
+
+              <p className="text-xs uppercase tracking-wider text-[#9b8f82]">
+                Processing
+              </p>
+            </div>
+
+            {/* OUT FOR DELIVERY */}
+            <div
+              onClick={() => setActiveFilter("Out for Delievery")}
+              className={`cursor-pointer text-right transition ${
+                activeFilter === "Out for Delievery"
+                  ? "scale-105 opacity-100"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              <p className="text-2xl font-medium text-[#292521]">
+                {outForDelieveryCount}
+              </p>
+
+              <p className="text-xs uppercase tracking-wider text-[#9b8f82]">
+                Out for Delivery
+              </p>
+            </div>
+
+            {/* DELIVERED */}
+            <div
+              onClick={() => setActiveFilter("Delivered")}
+              className={`cursor-pointer text-right transition ${
+                activeFilter === "Delivered"
+                  ? "scale-105 opacity-100"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              <p className="text-2xl font-medium text-[#292521]">
+                {delieveredCount}
+              </p>
+
+              <p className="text-xs uppercase tracking-wider text-[#9b8f82]">
+                Delivered
+              </p>
+            </div>
+
+            {/* CANCELLED */}
+            <div
+              onClick={() => setActiveFilter("Cancelled")}
+              className={`cursor-pointer text-right transition ${
+                activeFilter === "Cancelled"
+                  ? "scale-105 opacity-100"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
+              <p className="text-2xl font-medium text-[#292521]">
+                {cancelledCount}
+              </p>
+
+              <p className="text-xs uppercase tracking-wider text-[#9b8f82]">
+                Cancelled
+              </p>
+            </div>
+
+            {/* TOTAL ORDERS */}
+            <div
+              onClick={() => setActiveFilter("All")}
+              className={`cursor-pointer text-right transition ${
+                activeFilter === "All"
+                  ? "scale-105 opacity-100"
+                  : "opacity-60 hover:opacity-100"
+              }`}
+            >
               <p className="text-2xl font-medium text-[#292521]">
                 {orders.length}
               </p>
@@ -113,233 +254,263 @@ const Orders = ({ token }) => {
           </div>
         </div>
 
+        {/* CURRENT FILTER */}
+        {activeFilter !== "All" && (
+          <div className="mb-6 flex items-center justify-between border border-[#ddd6cd] bg-[#f9f6f1] px-5 py-3">
+            <p className="text-xs text-[#756b61]">
+              Showing <span className="font-semibold">{activeFilter}</span>{" "}
+              orders
+            </p>
+
+            <button
+              onClick={() => setActiveFilter("All")}
+              className="text-xs font-medium uppercase tracking-wider text-[#756b61] hover:text-[#292521]"
+            >
+              Clear Filter
+            </button>
+          </div>
+        )}
+
         {/* ORDER LIST */}
         <div className="space-y-8">
-          {orders.map((order) => (
-            <div
-              key={order._id}
-              className="overflow-hidden border border-[#ddd6cd] bg-[#fbfaf8]"
-            >
-              {/* ORDER HEADER */}
-              <div className="flex flex-col gap-5 border-b border-[#e1dbd3] bg-[#f9f6f1] px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-sm font-medium text-[#292521]">
-                      #{order._id}
-                    </h2>
+          {filteredOrders.length > 0 ? (
+            filteredOrders.map((order) => (
+              <div
+                key={order._id}
+                className="overflow-hidden border border-[#ddd6cd] bg-[#fbfaf8]"
+              >
+                {/* ORDER HEADER */}
+                <div className="flex flex-col gap-5 border-b border-[#e1dbd3] bg-[#f9f6f1] px-6 py-5 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <div className="flex items-center gap-3">
+                      <h2 className="text-sm font-medium text-[#292521]">
+                        #{order._id}
+                      </h2>
 
-                    <span className="h-1 w-1 rounded-full bg-[#b6aa9d]" />
+                      <span className="h-1 w-1 rounded-full bg-[#b6aa9d]" />
 
-                    <p className="text-xs text-[#8d8379]">{order.date}</p>
-                  </div>
-
-                  <p className="mt-2 text-xs text-[#8d8379]">
-                    Customer:{" "}
-                    <span className="text-[#4e4740]">
-                      {order.address.firstName} {order.address.lastName}
-                    </span>
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* PAYMENT */}
-                  <span
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                      order.payment
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {order.payment ? "Payment Paid" : "Payment Pending"}
-                  </span>
-
-                  {/* ORDER STATUS */}
-                  <span
-                    className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-                      order.status === "Delivered"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : order.status === "Shipped"
-                          ? "bg-blue-50 text-blue-700"
-                          : order.status === "Cancelled"
-                            ? "bg-red-50 text-red-600"
-                            : "bg-amber-50 text-amber-700"
-                    }`}
-                  >
-                    {order.status}
-                  </span>
-
-                  {/* STATUS SELECT */}
-                  <select
-                    onChange={(e) => orderStatusHandler(e, order._id)}
-                    defaultValue={order.status}
-                    className="cursor-pointer border border-[#d5cdc3] bg-white px-3 py-2 text-xs text-[#4e4740] outline-none focus:border-[#9b8f82]"
-                  >
-                    <option value={"Order Placed"}>Order Placed</option>
-                    <option value={"Processing"}>Processing</option>
-                    <option value={"Shipped"}>Shipped</option>
-                    <option value={"Out for Delievery"}>
-                      Out for Delivery
-                    </option>
-                    <option value={"Delivered"}>Delivered</option>
-                    <option value={"Cancelled"}>Cancelled</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* CUSTOMER INFO BUTTON */}
-              <div className="border-b border-[#e3ddd5] px-6 py-4">
-                <button
-                  onClick={() =>
-                    setShowCustomerInfo(
-                      showCustomerInfo === order._id ? null : order._id,
-                    )
-                  }
-                  className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-[#756b61] transition hover:text-[#292521]"
-                >
-                  <span>{showCustomerInfo === order._id ? "−" : "+"}</span>
-
-                  {showCustomerInfo === order._id
-                    ? "Hide Customer Info"
-                    : "Show Customer Info"}
-                </button>
-              </div>
-
-              {/* CUSTOMER INFORMATION */}
-              {showCustomerInfo === order._id && (
-                <div className="grid border-b border-[#e3ddd5] bg-[#faf8f5] lg:grid-cols-2">
-                  {/* CUSTOMER */}
-                  <div className="border-b border-[#e3ddd5] p-6 lg:border-b-0 lg:border-r">
-                    <p className="mb-5 text-[10px] font-medium uppercase tracking-[0.2em] text-[#9b8f82]">
-                      Customer Information
-                    </p>
-
-                    <div className="space-y-4">
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[#aaa095]">
-                          Name
-                        </p>
-
-                        <p className="mt-1 text-sm font-medium text-[#292521]">
-                          {order.address.firstName}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[#aaa095]">
-                          Email
-                        </p>
-
-                        <p className="mt-1 text-sm text-[#4e4740]">
-                          {order.address.email}
-                        </p>
-                      </div>
-
-                      <div>
-                        <p className="text-[10px] uppercase tracking-wider text-[#aaa095]">
-                          Phone
-                        </p>
-
-                        <p className="mt-1 text-sm text-[#4e4740]">
-                          {order.address.phone}
-                        </p>
-                      </div>
+                      <p className="text-xs text-[#8d8379]">{order.date}</p>
                     </div>
-                  </div>
 
-                  {/* DELIVERY ADDRESS */}
-                  <div className="p-6">
-                    <p className="mb-5 text-[10px] font-medium uppercase tracking-[0.2em] text-[#9b8f82]">
-                      Delivery Address
+                    <p className="mt-2 text-xs text-[#8d8379]">
+                      Customer:{" "}
+                      <span className="text-[#4e4740]">
+                        {order.address.firstName} {order.address.lastName}
+                      </span>
                     </p>
-
-                    <div className="space-y-1 text-sm leading-relaxed text-[#4e4740]">
-                      <p className="font-medium text-[#292521]">
-                        {order.address.firstName}
-                      </p>
-
-                      <p>{order.address.street}</p>
-
-                      <p>
-                        {order.address.city}, {order.address.province}
-                      </p>
-
-                      <p>{order.address.country} </p>
-                    </div>
                   </div>
-                </div>
-              )}
 
-              {/* PRODUCTS */}
-              <div>
-                <div className="border-b border-[#e3ddd5] px-6 py-4">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#9b8f82]">
-                    Ordered Products
-                  </p>
-                </div>
-
-                <div className="divide-y divide-[#eee9e2]">
-                  {order.items.map((item, index) => (
-                    <div
-                      key={index}
-                      className="flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center"
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* PAYMENT */}
+                    <span
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                        order.payment
+                          ? "bg-emerald-50 text-emerald-700"
+                          : "bg-amber-50 text-amber-700"
+                      }`}
                     >
-                      {/* IMAGE */}
-                      <div className="h-24 w-24 flex-shrink-0 overflow-hidden bg-[#eee9e2]">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
+                      {order.payment ? "Payment Paid" : "Payment Pending"}
+                    </span>
 
-                      {/* PRODUCT INFO */}
-                      <div className="flex-1">
-                        <h3 className="text-sm font-medium text-[#292521]">
-                          {item.name}
-                        </h3>
+                    {/* ORDER STATUS */}
+                    <span
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium ${
+                        order.status === "Delivered"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : order.status === "Shipped"
+                            ? "bg-blue-50 text-blue-700"
+                            : order.status === "Cancelled"
+                              ? "bg-red-50 text-red-600"
+                              : "bg-amber-50 text-amber-700"
+                      }`}
+                    >
+                      {order.status}
+                    </span>
 
-                        <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#8b8177]">
-                          <span>Color: {item.color}</span>
+                    {/* STATUS SELECT */}
+                    <select
+                      onChange={(e) => orderStatusHandler(e, order._id)}
+                      defaultValue={order.status}
+                      className="cursor-pointer border border-[#d5cdc3] bg-white px-3 py-2 text-xs text-[#4e4740] outline-none focus:border-[#9b8f82]"
+                    >
+                      <option value={"Order Placed"}>Order Placed</option>
 
-                          <span>Quantity: {item.quantity}</span>
+                      <option value={"Processing"}>Processing</option>
+
+                      <option value={"Shipped"}>Shipped</option>
+
+                      <option value={"Out for Delievery"}>
+                        Out for Delivery
+                      </option>
+
+                      <option value={"Delivered"}>Delivered</option>
+
+                      <option value={"Cancelled"}>Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* CUSTOMER INFO BUTTON */}
+                <div className="border-b border-[#e3ddd5] px-6 py-4">
+                  <button
+                    onClick={() =>
+                      setShowCustomerInfo(
+                        showCustomerInfo === order._id ? null : order._id,
+                      )
+                    }
+                    className="flex items-center gap-2 text-xs font-medium uppercase tracking-[0.15em] text-[#756b61] transition hover:text-[#292521]"
+                  >
+                    <span>{showCustomerInfo === order._id ? "−" : "+"}</span>
+
+                    {showCustomerInfo === order._id
+                      ? "Hide Customer Info"
+                      : "Show Customer Info"}
+                  </button>
+                </div>
+
+                {/* CUSTOMER INFORMATION */}
+                {showCustomerInfo === order._id && (
+                  <div className="grid border-b border-[#e3ddd5] bg-[#faf8f5] lg:grid-cols-2">
+                    {/* CUSTOMER */}
+                    <div className="border-b border-[#e3ddd5] p-6 lg:border-b-0 lg:border-r">
+                      <p className="mb-5 text-[10px] font-medium uppercase tracking-[0.2em] text-[#9b8f82]">
+                        Customer Information
+                      </p>
+
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[#aaa095]">
+                            Name
+                          </p>
+
+                          <p className="mt-1 text-sm font-medium text-[#292521]">
+                            {order.address.firstName}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[#aaa095]">
+                            Email
+                          </p>
+
+                          <p className="mt-1 text-sm text-[#4e4740]">
+                            {order.address.email}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p className="text-[10px] uppercase tracking-wider text-[#aaa095]">
+                            Phone
+                          </p>
+
+                          <p className="mt-1 text-sm text-[#4e4740]">
+                            {order.address.phone}
+                          </p>
                         </div>
                       </div>
+                    </div>
 
-                      {/* PRICE */}
-                      <div className="sm:text-right">
-                        <p className="text-sm font-medium text-[#292521]">
-                          Rs. {item.price.toLocaleString()}
+                    {/* DELIVERY ADDRESS */}
+                    <div className="p-6">
+                      <p className="mb-5 text-[10px] font-medium uppercase tracking-[0.2em] text-[#9b8f82]">
+                        Delivery Address
+                      </p>
+
+                      <div className="space-y-1 text-sm leading-relaxed text-[#4e4740]">
+                        <p className="font-medium text-[#292521]">
+                          {order.address.firstName}
                         </p>
 
-                        <p className="mt-1 text-xs text-[#9b9187]">
-                          {item.quantity} × Rs. {item.price.toLocaleString()}
+                        <p>{order.address.street}</p>
+
+                        <p>
+                          {order.address.city}, {order.address.province}
                         </p>
+
+                        <p>{order.address.country}</p>
                       </div>
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                {/* PRODUCTS */}
+                <div>
+                  <div className="border-b border-[#e3ddd5] px-6 py-4">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.2em] text-[#9b8f82]">
+                      Ordered Products
+                    </p>
+                  </div>
+
+                  <div className="divide-y divide-[#eee9e2]">
+                    {order.items.map((item, index) => (
+                      <div
+                        key={index}
+                        className="flex flex-col gap-5 px-6 py-6 sm:flex-row sm:items-center"
+                      >
+                        {/* IMAGE */}
+                        <div className="h-24 w-24 flex-shrink-0 overflow-hidden bg-[#eee9e2]">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+
+                        {/* PRODUCT INFO */}
+                        <div className="flex-1">
+                          <h3 className="text-sm font-medium text-[#292521]">
+                            {item.name}
+                          </h3>
+
+                          <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-xs text-[#8b8177]">
+                            <span>Color: {item.color}</span>
+
+                            <span>Quantity: {item.quantity}</span>
+                          </div>
+                        </div>
+
+                        {/* PRICE */}
+                        <div className="sm:text-right">
+                          <p className="text-sm font-medium text-[#292521]">
+                            Rs. {item.price.toLocaleString()}
+                          </p>
+
+                          <p className="mt-1 text-xs text-[#9b9187]">
+                            {item.quantity} × Rs. {item.price.toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* FOOTER */}
+                <div className="flex flex-col gap-5 border-t border-[#ddd6cd] bg-[#f8f5f0] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs text-[#8b8177]">Payment Method</p>
+
+                    <p className="mt-1 text-sm font-medium text-[#4e4740]">
+                      {order.paymentMethod}
+                    </p>
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-[#9b9187]">Order Total</p>
+
+                    <p className="mt-1 text-lg font-medium text-[#292521]">
+                      Rs. {order.amount.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </div>
-
-              {/* FOOTER */}
-              <div className="flex flex-col gap-5 border-t border-[#ddd6cd] bg-[#f8f5f0] px-6 py-5 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs text-[#8b8177]">Payment Method</p>
-
-                  <p className="mt-1 text-sm font-medium text-[#4e4740]">
-                    {order.paymentMethod}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-xs text-[#9b9187]">Order Total</p>
-
-                  <p className="mt-1 text-lg font-medium text-[#292521]">
-                    Rs. {order.amount.toLocaleString()}
-                  </p>
-                </div>
-              </div>
+            ))
+          ) : (
+            <div className="border border-[#ddd6cd] bg-[#fbfaf8] px-6 py-16 text-center">
+              <p className="text-sm text-[#8d8379]">
+                No orders found for this status.
+              </p>
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

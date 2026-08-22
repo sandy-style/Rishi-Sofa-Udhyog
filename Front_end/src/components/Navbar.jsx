@@ -49,6 +49,13 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
           <p>Contact</p>
           <hr className="border-none w-2/4 h-[1.5px] hidden bg-gray-600 opacity-0" />
         </NavLink>
+        <NavLink
+          to="/orders"
+          className="flex flex-col items-center gap-1  hover:text-[#B8864C]"
+        >
+          <p>My orders</p>
+          <hr className="border-none w-2/4 h-[1.5px] hidden bg-gray-600 opacity-0  hover:text-[#B8864C]" />
+        </NavLink>
       </ul>
       {/* Menu  start */}
 
@@ -118,7 +125,19 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
           >
             Contact
           </NavLink>
-
+          <NavLink
+            onClick={() => showMenu(false)}
+            to="/orders"
+            className={({ isActive }) =>
+              `transition-colors ${
+                isActive
+                  ? "text-[#C99658] font-semibold"
+                  : "text-[#231F1C] hover:text-[#C99658]"
+              }`
+            }
+          >
+            My orders
+          </NavLink>
           <NavLink onClick={() => showMenu(false)} to="/login">
             <button className="mt-6 w-full bg-[#C99658] text-white py-3 rounded-xl hover:bg-[#B8864C] transition">
               Sign In
@@ -140,6 +159,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             alt=""
           />
         </div>
+
         <NavLink
           className={({ isActive }) => `${isActive ? "hidden" : "relative"}`}
           to="/cart"

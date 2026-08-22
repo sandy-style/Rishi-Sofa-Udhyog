@@ -6,7 +6,7 @@ import { backendUrl } from "../App";
 import { useContext } from "react";
 import { ShopContext } from "../context/shopContext";
 import { toast } from "react-toastify";
-const PlaceOrder = () => {
+const PlaceOrder = ({ setShowLogin }) => {
   const {
     totalAmount,
     delievery_fee,
@@ -38,6 +38,10 @@ const PlaceOrder = () => {
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+    if (!token) {
+      setShowLogin(true);
+      return;
+    }
     try {
       let orderItems = [];
       if (getCartCount() === 0) {
