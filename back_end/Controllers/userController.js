@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import validator from "validator";
 import { response } from "express";
 import userModel from "../models/users.js";
+import { sendEmail } from "../config/sendEmail.js";
 // create token
 const createToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: "7d" });
@@ -17,10 +18,27 @@ const registerUser = async (req, res) => {
     const alreadyExists = await userModel.findOne({ email });
 
     if (alreadyExists) {
-      return res.json({
-        success: false,
-        message: "User from this Email already exists",
-      });
+      if (!alreadyExists.isVerified) {
+        const randomCode = Math.floor(
+          100000 + Math.random() * 900000,
+        ).toString();
+        const verificationCode = await bcrypt.hash(randomCode, 6);
+        const verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+        alreadyExists.verificationCode = verificationCode;
+        alreadyExists.verificationCodeExpires = verificationCodeExpires;
+
+        await alreadyExists.save();
+
+        await sendEmail(email, randomCode);
+        return res.json({
+          success: true,
+          message: "New Token created",
+          verify: false,
+        });
+      } else {
+        return res.json({ success: false, message: "User already exists" });
+      }
     }
     // validation of email format and password difficulty
     if (!validator.isEmail(email)) {
@@ -50,17 +68,22 @@ const registerUser = async (req, res) => {
     // hashing password and registering user
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
+    const randomcode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCode = await bcrypt.hash(randomcode, 8);
+    const verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
     const newUser = new userModel({
       name,
       email,
       password: hashedPassword,
+      verificationCode,
+      verificationCodeExpires,
     });
+    await sendEmail(email, randomcode);
+
     const user = await newUser.save();
-    const token = createToken(user._id);
     return res.json({
       success: true,
-      message: `user :${name} is created successfully`,
-      token,
+      verify: false,
     });
   } catch (error) {
     console.log(error);
@@ -86,6 +109,28 @@ const logUser = async (req, res) => {
         message: "Please enter a correct password",
       });
     }
+    if (!user.isVerified) {
+      const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+      const verificationCode = await bcrypt.hash(randomCode, 6);
+
+      const verificationCodeExpires = new Date(Date.now() + 10 * 60 * 1000);
+
+      user.verificationCode = verificationCode;
+      user.verificationCodeExpires = verificationCodeExpires;
+
+      await user.save();
+
+      await sendEmail(email, randomCode);
+
+      return res.json({
+        success: false,
+        message:
+          "Email is not verified. A new verification code has been sent.",
+        verify: false,
+      });
+    }
+
     const token = createToken(user._id);
 
     return res.json({
@@ -125,4 +170,70 @@ const adminLogin = async (req, res) => {
   }
 };
 
-export { registerUser, logUser, adminLogin };
+const verifyUser = async (req, res) => {
+  try {
+    const { email, verificationCode } = req.body;
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "Email could not be verified",
+      });
+    }
+    if (
+      !user.verificationCodeExpires ||
+      Date.now() > user.verificationCodeExpires.getTime()
+    ) {
+      return res.json({ success: false, message: "Verification code expired" });
+    }
+    const isMatch = await bcrypt.compare(
+      verificationCode,
+      user.verificationCode,
+    );
+    if (isMatch) {
+      user.isVerified = true;
+      user.verificationCode = "";
+      user.verificationCodeExpires = null;
+      const token = createToken(user._id);
+      await user.save();
+      return res.json({
+        success: true,
+        message: "Email is successfully verified",
+        token,
+      });
+    } else {
+      return res.json({
+        success: false,
+        message: "verification code doesnot match",
+      });
+    }
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+const resendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await userModel.findOne({ email });
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "User not found",
+      });
+    }
+    const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.verificationCode = await bcrypt.hash(randomCode, 12);
+    user.verificationCodeExpires = Date.now() + 3600000; // 1 hour
+    await user.save();
+    await sendEmail(email, randomCode);
+    return res.json({
+      success: true,
+      message: "New verification code sent",
+    });
+  } catch (error) {
+    return res.json({ success: false, message: error.message });
+  }
+};
+
+export { registerUser, logUser, adminLogin, verifyUser, resendVerificationCode };

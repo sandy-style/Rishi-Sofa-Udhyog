@@ -80,7 +80,8 @@ const Collection = () => {
         break;
 
       case "New":
-        productCopy.sort((a, b) => b.date - a.date);
+        productCopy.sort((a, b) => new Date(b.date) - new Date(a.date));
+
         break;
 
       default:
