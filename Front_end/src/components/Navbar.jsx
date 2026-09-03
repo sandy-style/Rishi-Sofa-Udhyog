@@ -1,32 +1,148 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { Search, ShoppingBag, Menu, X, User, LogOut } from "lucide-react";
 import { ShopContext } from "../context/shopContext";
 import { assets } from "../assets/assets";
-
+import axios from "axios";
+import { backendUrl } from "../App";
 const Navbar = ({ setToken, setShowLogin, token }) => {
   const location = useLocation();
+
   const [menu, setMenu] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [userData, setUserData] = useState(null);
+
+  const profileRef = useRef(null);
 
   const { setShowSearch, showSearch, getCartCount, navigate } =
     useContext(ShopContext);
 
+  // ==========================================
+  // GET USER DETAILS
+  // ==========================================
+
+  useEffect(() => {
+    const getUserData = async () => {
+      try {
+        const response = await axios.get(backendUrl + "/api/user/getUserData", {
+          headers: {
+            token: token,
+          },
+        });
+
+        if (response.data.success) {
+          const userData = response.data.userData;
+
+          // This causes Navbar to immediately re-render
+          setUserData(userData);
+
+          // Optional: keep it in localStorage
+          localStorage.setItem("userData", JSON.stringify(userData));
+        }
+      } catch (error) {
+        console.log("Failed to get user data:", error);
+      }
+    };
+
+    if (token) {
+      getUserData();
+    } else {
+      setUserData(null);
+      localStorage.removeItem("userData");
+    }
+  }, [token]);
+
+  // ==========================================
+  // CLOSE PROFILE WHEN CLICKING OUTSIDE
+  // ==========================================
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setShowProfile(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
+
   const logoutHandler = async () => {
+    setShowProfile(false);
+
+    localStorage.removeItem("userData");
+
     setToken("");
+
     await window.location.reload();
   };
+
+  // ==========================================
+  // USER INITIALS
+  // ==========================================
+
+  const getInitials = () => {
+    if (!userData?.name) return "U";
+
+    const words = userData.name.trim().split(" ");
+
+    if (words.length === 1) {
+      return words[0].charAt(0).toUpperCase();
+    }
+
+    return (
+      words[0].charAt(0) + words[words.length - 1].charAt(0)
+    ).toUpperCase();
+  };
+
+  // ==========================================
+  // RANDOM AVATAR COLOR
+  // ==========================================
+
+  const avatarColors = [
+    "bg-[#B8864C]",
+    "bg-[#6B7280]",
+    "bg-[#7C6F64]",
+    "bg-[#8B7355]",
+    "bg-[#5F6F52]",
+    "bg-[#8064A2]",
+    "bg-[#64748B]",
+  ];
+
+  const getAvatarColor = () => {
+    if (!userData?.email) return avatarColors[0];
+
+    let hash = 0;
+
+    for (let i = 0; i < userData.email.length; i++) {
+      hash = userData.email.charCodeAt(i) + ((hash << 5) - hash);
+    }
+
+    return avatarColors[Math.abs(hash) % avatarColors.length];
+  };
+
+  // ==========================================
+  // NAV ITEMS
+  // ==========================================
 
   const navItems = [
     { name: "Home", path: "/" },
     { name: "Collection", path: "/collection" },
     { name: "About", path: "/about" },
     { name: "Contact", path: "/contact" },
-    { name: "My Orders", path: "/orders" },
   ];
 
   return (
     <>
       {/* ================= NAVBAR ================= */}
+
       <header className="relative z-40 w-full font-manrope">
         <div className="w-full">
           <div
@@ -47,6 +163,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             "
           >
             {/* ================= LOGO ================= */}
+
             <Link
               to="/"
               onClick={() => setMenu(false)}
@@ -66,6 +183,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             </Link>
 
             {/* ================= DESKTOP NAV ================= */}
+
             <nav
               className="
                 hidden
@@ -92,6 +210,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                     font-medium
                     transition-all
                     duration-300
+
                     ${
                       isActive
                         ? "text-[#B8864C]"
@@ -117,8 +236,10 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             </nav>
 
             {/* ================= RIGHT SIDE ================= */}
+
             <div className="flex items-center gap-1 sm:gap-3 ml-auto">
               {/* SEARCH */}
+
               {location.pathname === "/collection" && (
                 <button
                   onClick={() => setShowSearch(!showSearch)}
@@ -151,6 +272,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
               )}
 
               {/* CART */}
+
               <Link
                 to="/cart"
                 className="
@@ -229,37 +351,147 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                   "
                 >
                   <User size={16} strokeWidth={1.8} />
-
                   <span>Sign In</span>
                 </button>
               ) : (
-                <button
-                  onClick={logoutHandler}
-                  className="
-                    hidden
-                    sm:flex
-                    items-center
-                    justify-center
-                    gap-2
-                    h-10
-                    px-5
-                    rounded-xl
-                    bg-[#2C2926]
-                    text-white
-                    text-xs
-                    uppercase
-                    tracking-[0.12em]
-                    font-medium
-                    hover:bg-[#B8864C]
-                    transition-all
-                    duration-300
-                    cursor-pointer
-                  "
-                >
-                  <LogOut size={16} strokeWidth={1.8} />
+                /* ================= PROFILE ================= */
 
-                  <span>Log Out</span>
-                </button>
+                <div ref={profileRef} className="hidden sm:block relative">
+                  <button
+                    onClick={() => setShowProfile(!showProfile)}
+                    className="
+                      flex
+                      items-center
+                      justify-center
+                      w-10
+                      h-10
+                      rounded-full
+                      hover:scale-105
+                      transition-all
+                      duration-200
+                      cursor-pointer
+                      focus:outline-none
+                    "
+                  >
+                    <div
+                      className={`
+                        w-10
+                        h-10
+                        rounded-full
+                        ${getAvatarColor()}
+                        text-white
+                        flex
+                        items-center
+                        justify-center
+                        text-md
+                        font-semibold
+                        uppercase
+                        shadow-sm
+                      `}
+                    >
+                      {getInitials()}
+                    </div>
+                  </button>
+
+                  {/* PROFILE DROPDOWN */}
+
+                  {showProfile && (
+                    <div
+                      className="
+                        absolute
+                        right-0
+                        top-14
+                        w-72
+                        bg-white
+                        rounded-2xl
+                        shadow-xl
+                        border
+                        border-[#E8DED2]
+                        overflow-hidden
+                        z-50
+                      "
+                    >
+                      {/* USER INFO */}
+
+                      <div className="px-5 py-5 bg-[#F7F3EE]">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`
+                              w-12
+                              h-12
+                              shrink-0
+                              rounded-full
+                              ${getAvatarColor()}
+                              text-white
+                              flex
+                              items-center
+                              justify-center
+                              text-sm
+                              font-semibold
+                            `}
+                          >
+                            {getInitials()}
+                          </div>
+
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#2C2926] truncate">
+                              {userData?.name || "User"}
+                            </p>
+
+                            <p className="text-xs text-[#8A8178] truncate mt-1">
+                              {userData?.email || "Email unavailable"}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* PROFILE OPTIONS */}
+
+                      <div className="p-2">
+                        <Link
+                          to="/orders"
+                          onClick={() => setShowProfile(false)}
+                          className="
+                            flex
+                            items-center
+                            gap-3
+                            px-4
+                            py-3
+                            rounded-xl
+                            text-sm
+                            text-[#4A4540]
+                            hover:bg-[#F7F3EE]
+                            hover:text-[#B8864C]
+                            transition
+                          "
+                        >
+                          <ShoppingBag size={17} />
+                          My Orders
+                        </Link>
+
+                        <button
+                          onClick={logoutHandler}
+                          className="
+                            w-full
+                            flex
+                            items-center
+                            gap-3
+                            px-4
+                            py-3
+                            rounded-xl
+                            text-sm
+                            text-red-500
+                            hover:bg-red-50
+                            transition
+                          "
+                        >
+                          <LogOut size={17} />
+                          Log Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* ================= MOBILE MENU BUTTON ================= */}
@@ -287,9 +519,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
         </div>
       </header>
 
-      {/* ================================================= */}
-      {/* MOBILE OVERLAY */}
-      {/* ================================================= */}
+      {/* ================= MOBILE OVERLAY ================= */}
 
       <div
         onClick={() => setMenu(false)}
@@ -310,9 +540,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
         `}
       />
 
-      {/* ================================================= */}
-      {/* MOBILE SIDE MENU */}
-      {/* ================================================= */}
+      {/* ================= MOBILE SIDE MENU ================= */}
 
       <aside
         className={`
@@ -367,6 +595,63 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             <X size={22} strokeWidth={1.7} className="text-[#2C2926]" />
           </button>
         </div>
+
+        {/* ================= MOBILE USER ================= */}
+
+        {token && (
+          <div className="px-6 pt-7">
+            <div className="flex items-center gap-3">
+              <div
+                className={`
+          w-12
+          h-12
+          rounded-full
+          ${getAvatarColor()}
+          text-white
+          flex
+          items-center
+          justify-center
+          text-sm
+          font-semibold
+        `}
+              >
+                {getInitials()}
+              </div>
+
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#2C2926] truncate">
+                  {userData?.name || "User"}
+                </p>
+
+                <p className="text-xs text-[#8A8178] truncate mt-1">
+                  {userData?.email || "Email unavailable"}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5">
+              <Link
+                to="/orders"
+                onClick={() => setMenu(false)}
+                className="group flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-white border border-[#E5DCD2] text-[#2C2926] hover:bg-[#2C2926] hover:text-white hover:border-[#2C2926] transition-all duration-300"
+              >
+                <div className="flex items-center gap-3">
+                  <ShoppingBag
+                    size={18}
+                    strokeWidth={1.7}
+                    className="text-[#B8864C] group-hover:text-white transition-colors duration-300"
+                  />
+
+                  <span className="text-sm font-medium">My Orders</span>
+                </div>
+
+                <span className="text-[#B8864C] group-hover:text-white group-hover:translate-x-1 transition-all duration-300">
+                  →
+                </span>
+              </Link>
+            </div>
+          </div>
+        )}
 
         {/* ================= MOBILE NAVIGATION ================= */}
 

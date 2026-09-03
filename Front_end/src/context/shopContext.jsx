@@ -51,7 +51,6 @@ const ShopContextProvider = (props) => {
   };
 
   const addToCart = async (productId) => {
-    
     try {
       const response = await axios.post(
         backendUrl + "/api/cart/add",

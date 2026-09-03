@@ -11,49 +11,67 @@ import {
 import { toast } from "react-toastify";
 import { backendUrl } from "../App";
 import axios from "axios";
-import { data } from "react-router-dom";
+import { GoogleLogin } from "@react-oauth/google";
+
 const Login = ({ setShowLogin, setToken }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [show, setShow] = useState("Register");
+
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
+
+  // =========================
+  // REGISTER
+  // =========================
   const registerHandler = async (e) => {
     e.preventDefault();
+
     console.log("register triggered");
-    if (password != confirmPassword) {
+
+    if (password !== confirmPassword) {
       toast.error("Passwords do not match");
       return;
     }
+
     try {
       const response = await axios.post(backendUrl + "/api/user/register", {
         name,
         email,
         password,
       });
+
       if (response.data.success && !response.data.verify) {
         setShow("Verify");
+        
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
       console.log(error);
     }
   };
+
+  // =========================
+  // NORMAL LOGIN
+  // =========================
   const loginHandler = async () => {
     try {
       const response = await axios.post(backendUrl + "/api/user/login", {
         email,
         password,
       });
+
       if (response.data.success) {
         setToken(response.data.token);
         setShowLogin(false);
+
         toast.success(response.data.message);
+
         window.location.reload();
       } else if (!response.data.success && response.data.verify === false) {
         setShow("Verify");
@@ -61,56 +79,106 @@ const Login = ({ setShowLogin, setToken }) => {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error);
+      toast.error(error.response?.data?.message || error.message);
+
       console.log(error);
     }
   };
+
+  // =========================
+  // GOOGLE LOGIN
+  // =========================
+  const googleLoginHandler = async (credentialResponse) => {
+    try {
+      const response = await axios.post(backendUrl + "/api/user/google", {
+        credential: credentialResponse.credential,
+      });
+
+      if (response.data.success) {
+        setToken(response.data.token);
+        setShowLogin(false);
+
+        toast.success(response.data.message);
+
+        window.location.reload();
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      console.log("Google login error:", error);
+
+      toast.error(
+        error.response?.data?.message || error.message || "Google login failed",
+      );
+    }
+  };
+
+  // =========================
+  // EMAIL VERIFICATION
+  // =========================
   const verificationHandler = async (e) => {
     e.preventDefault();
+
     try {
       const response = await axios.post(backendUrl + "/api/user/verify-email", {
         email,
         verificationCode,
       });
+
       if (response.data.success) {
         setToken(response.data.token);
         setShowLogin(false);
+
         setName("");
         setEmail("");
         setPassword("");
         setConfirmPassword("");
+        setVerificationCode("");
+
         toast.success(response.data.message);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.message);
-      console.log(error.message);
+      toast.error(error.response?.data?.message || error.message);
+
+      console.log(error);
     }
   };
+
+  // =========================
+  // RESEND VERIFICATION CODE
+  // =========================
   const resendVerificationCodeHandler = async () => {
     try {
       const response = await axios.post(backendUrl + "/api/user/resend-code", {
         email,
       });
+
       if (response.data.success) {
         toast.success(response.data.message);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
+
+  // =========================
+  // LOGIN SCREEN
+  // =========================
   switch (show) {
     case "Login":
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          {/* Login Card */}
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* Close Button */}
-            <button className="absolute top-5 right-5 text-gray-400 hover:text-black transition">
-              <X size={21} onClick={() => setShowLogin(false)} />
+            <button
+              onClick={() => setShowLogin(false)}
+              className="absolute top-5 right-5 text-gray-400 hover:text-black transition"
+            >
+              <X size={21} />
             </button>
 
             <div className="px-8 sm:px-10 py-10">
@@ -140,6 +208,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <input
+                      value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
                       placeholder="Enter your email"
@@ -155,7 +224,10 @@ const Login = ({ setShowLogin, setToken }) => {
                       Password
                     </label>
 
-                    <button className="text-xs text-gray-500 hover:text-black transition">
+                    <button
+                      type="button"
+                      className="text-xs text-gray-500 hover:text-black transition"
+                    >
                       Forgot password?
                     </button>
                   </div>
@@ -167,27 +239,20 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <input
+                      value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       type={showPassword ? "text" : "password"}
                       placeholder="Enter your password"
                       className="w-full h-12 pl-11 pr-11 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
                     />
 
-                    {showPassword ? (
-                      <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition">
-                        <EyeOff
-                          onClick={() => setShowPassword(!showPassword)}
-                          size={18}
-                        />
-                      </button>
-                    ) : (
-                      <button className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition">
-                        <Eye
-                          onClick={() => setShowPassword(!showPassword)}
-                          size={18}
-                        />
-                      </button>
-                    )}
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition"
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
                   </div>
                 </div>
 
@@ -206,6 +271,7 @@ const Login = ({ setShowLogin, setToken }) => {
 
                 {/* Login Button */}
                 <button
+                  type="button"
                   onClick={loginHandler}
                   className="w-full h-12 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition"
                 >
@@ -222,10 +288,22 @@ const Login = ({ setShowLogin, setToken }) => {
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
 
+              {/* Google Login */}
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={googleLoginHandler}
+                  onError={() => {
+                    toast.error("Google login failed");
+                  }}
+                  width="100%"
+                />
+              </div>
+
               {/* Create Account */}
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-sm text-gray-500 mt-7">
                 Don't have an account?{" "}
                 <button
+                  type="button"
                   onClick={() => setShow("Register")}
                   className="font-medium text-black hover:underline"
                 >
@@ -237,10 +315,12 @@ const Login = ({ setShowLogin, setToken }) => {
         </div>
       );
 
+    // =========================
+    // REGISTER SCREEN
+    // =========================
     case "Register":
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          {/* Register Card */}
           <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
             {/* Close Button */}
             <button
@@ -277,6 +357,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <input
+                      value={name}
                       onChange={(e) => setName(e.target.value)}
                       type="text"
                       placeholder="Enter your full name"
@@ -299,6 +380,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <input
+                      value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       type="email"
                       placeholder="Enter your email"
@@ -321,6 +403,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <input
+                      value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       type={showPassword ? "text" : "password"}
                       placeholder="Create a password"
@@ -329,6 +412,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <button
+                      type="button"
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition"
                     >
@@ -350,6 +434,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <input
+                      value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
                       type={showConfirmPassword ? "text" : "password"}
                       placeholder="Confirm your password"
@@ -358,6 +443,7 @@ const Login = ({ setShowLogin, setToken }) => {
                     />
 
                     <button
+                      type="button"
                       onClick={() =>
                         setShowConfirmPassword(!showConfirmPassword)
                       }
@@ -397,6 +483,7 @@ const Login = ({ setShowLogin, setToken }) => {
 
                 {/* Register Button */}
                 <button
+                  type="button"
                   onClick={registerHandler}
                   className="w-full h-12 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition mt-2"
                 >
@@ -413,10 +500,22 @@ const Login = ({ setShowLogin, setToken }) => {
                 <div className="flex-1 h-px bg-gray-200" />
               </div>
 
+              {/* Google Login */}
+              <div className="flex justify-center">
+                <GoogleLogin
+                  onSuccess={googleLoginHandler}
+                  onError={() => {
+                    toast.error("Google login failed");
+                  }}
+                  width="100%"
+                />
+              </div>
+
               {/* Login */}
-              <p className="text-center text-sm text-gray-500">
+              <p className="text-center text-sm text-gray-500 mt-6">
                 Already have an account?{" "}
                 <button
+                  type="button"
                   onClick={() => setShow("Login")}
                   className="font-medium text-black hover:underline"
                 >
@@ -427,6 +526,10 @@ const Login = ({ setShowLogin, setToken }) => {
           </div>
         </div>
       );
+
+    // =========================
+    // VERIFY SCREEN
+    // =========================
     case "Verify":
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
@@ -492,6 +595,7 @@ const Login = ({ setShowLogin, setToken }) => {
 
                 {/* Verify Button */}
                 <button
+                  type="button"
                   onClick={verificationHandler}
                   className="h-12 w-full rounded-lg bg-black text-sm font-medium text-white transition hover:bg-gray-800"
                 >
@@ -506,6 +610,7 @@ const Login = ({ setShowLogin, setToken }) => {
                 </p>
 
                 <button
+                  type="button"
                   onClick={resendVerificationCodeHandler}
                   className="mt-1 text-sm font-medium text-black transition hover:underline"
                 >
@@ -513,9 +618,10 @@ const Login = ({ setShowLogin, setToken }) => {
                 </button>
               </div>
 
-              {/* Change Email */}
+              {/* Cancel */}
               <div className="mt-6 border-t border-gray-100 pt-5 text-center">
                 <button
+                  type="button"
                   onClick={() => setShowLogin(false)}
                   className="text-xs text-gray-500 transition hover:text-black"
                 >
@@ -526,6 +632,9 @@ const Login = ({ setShowLogin, setToken }) => {
           </div>
         </div>
       );
+
+    default:
+      return null;
   }
 };
 
