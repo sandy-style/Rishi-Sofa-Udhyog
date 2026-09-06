@@ -90,15 +90,6 @@ const Product = ({ token, setShowLogin }) => {
                   {productData.material}
                 </p>
               </div>
-
-              <div className="bg-[#F8F4EE] border border-[#E8DED2] rounded-xl p-5 shadow-sm hover:shadow-md transition">
-                <p className="text-xs uppercase tracking-[0.2em] text-[#9A8F84]">
-                  Color
-                </p>
-                <p className="mt-2 text-lg font-semibold text-[#231F1C]">
-                  {productData.color.join(", ")}
-                </p>
-              </div>
             </div>
             <div className="mt-10">
               {" "}

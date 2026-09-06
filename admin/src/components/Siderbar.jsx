@@ -24,20 +24,35 @@ const Siderbar = () => {
   ];
 
   return (
-    <aside className="h-full w-64 bg-white">
-      <div className="border-b px-6 py-5">
-        <h2 className="text-xl font-bold text-gray-800">Dashboard</h2>
+    <aside className="h-full w-16 sm:w-20 md:w-64 bg-white border-r">
+      {/* Header */}
+      <div className="border-b px-2 sm:px-3 md:px-6 py-5">
+        <h2 className="hidden md:block text-xl font-bold text-gray-800">
+          Dashboard
+        </h2>
 
-        <p className="text-sm text-gray-500">Admin Panel</p>
+        <p className="hidden md:block text-sm text-gray-500">Admin Panel</p>
+
+        {/* Mobile icon */}
+        <div className="md:hidden flex justify-center">
+          <div className="w-9 h-9 rounded-lg bg-black text-white flex items-center justify-center font-bold">
+            A
+          </div>
+        </div>
       </div>
 
-      <nav className="mt-6 flex flex-col gap-2 px-4">
+      {/* Navigation */}
+      <nav className="mt-6 flex flex-col gap-2 px-2 md:px-4">
         {menu.map((item) => (
           <NavLink
             key={item.name}
             to={item.path}
+            title={item.name}
             className={({ isActive }) =>
-              `flex items-center gap-4 rounded-xl px-4 py-3 transition-all duration-200
+              `flex items-center rounded-xl py-3 transition-all duration-200
+              justify-center md:justify-start
+              gap-0 md:gap-4
+              px-2 md:px-4
               ${
                 isActive
                   ? "bg-black text-white shadow-md"
@@ -47,7 +62,7 @@ const Siderbar = () => {
           >
             {item.icon}
 
-            <span className="font-medium">{item.name}</span>
+            <span className="hidden md:block font-medium">{item.name}</span>
           </NavLink>
         ))}
       </nav>

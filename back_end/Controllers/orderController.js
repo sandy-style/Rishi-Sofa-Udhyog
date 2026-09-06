@@ -1,11 +1,15 @@
 import { response } from "express";
 import orderModel from "../models/order.js";
 import userModel from "../models/users.js";
+import notificationModel from "../models/notification.js";
+import sendPushNotification from "../config/sendPushNotification.js";
 // placing order using cod method
 const placeOrder = async (req, res) => {
   try {
     const { items, address, amount } = req.body;
     const userId = req.userId;
+    const user = await userModel.findById(userId);
+    const customerName = user?.name || "A Customer";
     const orderData = {
       userId,
       items,
@@ -14,15 +18,37 @@ const placeOrder = async (req, res) => {
       paymentMethod: "COD",
       payment: false,
     };
+
     const newOrder = new orderModel(orderData);
     await newOrder.save();
+
+    // Create notification
+    await notificationModel.create({
+      type: "new_order",
+      title: "New Order",
+      message: `${customerName} placed an order worth Rs. ${amount}`,
+      orderId: newOrder._id,
+    });
+
+    // 🔔 Send push notification
+    await sendPushNotification({
+      title: "New Order 🛋️",
+      message: "A new customer order has been placed.",
+    });
+
     await userModel.findByIdAndUpdate(userId, { cartData: {} });
-    res.json({ success: true, message: "Order placed" });
+
+    res.json({
+      success: true,
+      message: "Order placed",
+    });
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    res.json({
+      success: false,
+      message: error.message,
+    });
   }
 };
-
 // placing order using esewa
 const placeOrderEsewa = async (req, res) => {};
 

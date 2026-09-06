@@ -1,50 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import { MdCloudUpload } from "react-icons/md";
-import { FiChevronDown, FiChevronUp } from "react-icons/fi";
 import axios from "axios";
 import { backendUrl } from "../App";
 import { toast } from "react-toastify";
 
 const Add = ({ token }) => {
-  const [showMore, setShowMore] = useState(false);
-  const [selectedColor, setSelectedColor] = useState([]);
-
-  console.log(selectedColor);
-  const colorHandler = (color) => {
-    let toggleColor = structuredClone(selectedColor);
-    const exist = toggleColor.some((item) => item.name === color.name);
-    if (exist) {
-      toggleColor = toggleColor.filter((prev) => prev.name !== color.name);
-    } else {
-      toggleColor.push(color);
-    }
-    setSelectedColor(toggleColor);
-  };
-
-  const sofaColors = [
-    { name: "White", hex: "#FFFFFF" },
-    { name: "Cream", hex: "#FFFDD0" },
-    { name: "Beige", hex: "#F5F5DC" },
-    { name: "Sand", hex: "#C2B280" },
-    { name: "Light Grey", hex: "#D3D3D3" },
-    { name: "Grey", hex: "#808080" },
-    { name: "Charcoal", hex: "#36454F" },
-    { name: "Black", hex: "#000000" },
-    { name: "Tan", hex: "#D2B48C" },
-    { name: "Camel", hex: "#C19A6B" },
-    { name: "Brown", hex: "#8B4513" },
-    { name: "Chocolate Brown", hex: "#5D3A1A" },
-    { name: "Navy Blue", hex: "#1E3A8A" },
-    { name: "Dusty Blue", hex: "#6C8EBF" },
-    { name: "Sage Green", hex: "#9CAF88" },
-    { name: "Olive Green", hex: "#708238" },
-    { name: "Emerald Green", hex: "#50C878" },
-    { name: "Mustard", hex: "#D4A017" },
-    { name: "Terracotta", hex: "#E2725B" },
-    { name: "Burgundy", hex: "#800020" },
-  ];
-
-  // data manipulation to send to backend
   const [image1, setImage1] = useState("");
   const [image2, setImage2] = useState("");
   const [image3, setImage3] = useState("");
@@ -58,14 +18,19 @@ const Add = ({ token }) => {
   const [bestSeller, setBestSeller] = useState(false);
   const [onStock, setOnStock] = useState(true);
 
-  const visibleColors = showMore ? sofaColors : sofaColors.slice(0, 8);
+  const [loading, setLoading] = useState(false);
 
-  // form handler
+  // Form handler
   const submitHandler = async (e) => {
     e.preventDefault();
-    console.log("submitted");
+
+    if (loading) return;
+
+    setLoading(true);
+
     try {
       const formData = new FormData();
+
       formData.append("name", name);
       formData.append("description", description);
       formData.append("material", material);
@@ -73,10 +38,7 @@ const Add = ({ token }) => {
       formData.append("price", price);
       formData.append("stock", onStock);
       formData.append("bestSeller", bestSeller);
-      formData.append(
-        "color",
-        JSON.stringify(selectedColor.map((item) => item.name)),
-      );
+
       image1 && formData.append("image1", image1);
       image2 && formData.append("image2", image2);
       image3 && formData.append("image3", image3);
@@ -85,204 +47,265 @@ const Add = ({ token }) => {
       const response = await axios.post(
         backendUrl + "/api/admin/add",
         formData,
-        { headers: { token } },
+        {
+          headers: {
+            token,
+          },
+        },
       );
+
       if (response.data.success) {
         toast.success(response.data.message);
+
         setName("");
         setDescription("");
         setMaterial("leather");
-        setSelectedColor([]);
-        setPrice(25000);
+        setPrice("");
         setseating("");
         setImage1("");
         setImage2("");
         setImage3("");
         setImage4("");
+        setBestSeller(false);
+        setOnStock(true);
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error);
+      toast.error(error.message);
       console.log(error);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-5">
-      <div className=" max-w-6xl rounded-3xl bg-white shadow-xl border p-10">
-        <h1 className="text-3xl font-bold mb-1">Add New Product</h1>
+    <div className="min-h-screen bg-gray-50 px-3 py-4 sm:px-5 sm:py-6 md:px-8">
+      <div className="mx-auto w-full max-w-6xl rounded-2xl border bg-white p-4 shadow-xl sm:rounded-3xl sm:p-6 md:p-8 lg:p-10">
+        {/* Header */}
+        <div className="mb-7 sm:mb-10">
+          <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+            Add New Product
+          </h1>
 
-        <p className="text-gray-500 mb-10">
-          Upload product details and showcase your premium sofa.
-        </p>
+          <p className="mt-1 text-sm leading-6 text-gray-500 sm:text-base">
+            Upload product details and showcase your premium sofa.
+          </p>
+        </div>
 
-        <form onSubmit={submitHandler} className="space-y-10">
-          {/* Upload Images */}
+        <form onSubmit={submitHandler} className="space-y-8 sm:space-y-10">
+          {/* ================= PRODUCT IMAGES ================= */}
           <div>
-            <h2 className="text-lg font-semibold mb-5">Product Images</h2>
+            <h2 className="mb-4 text-lg font-semibold sm:mb-5">
+              Product Images
+            </h2>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-4 md:gap-6">
+              {/* Image 1 */}
               <label
                 htmlFor="image1"
-                className="cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-black hover:bg-gray-100 transition h-52 flex flex-col items-center justify-center"
+                className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-black hover:bg-gray-100 sm:h-48 sm:rounded-2xl md:h-52"
               >
                 {image1 ? (
                   <img
                     src={URL.createObjectURL(image1)}
                     alt=""
-                    className="m-0.5 w-45"
+                    className="h-full w-full rounded-xl object-contain p-2"
                   />
                 ) : (
-                  <div>
-                    <MdCloudUpload size={45} className="text-gray-500" />
+                  <div className="text-center">
+                    <MdCloudUpload
+                      size={38}
+                      className="mx-auto text-gray-500 sm:size-11"
+                    />
 
-                    <p className="mt-3 font-medium">Upload Image</p>
+                    <p className="mt-2 text-sm font-medium sm:mt-3 sm:text-base">
+                      Upload Image
+                    </p>
 
-                    <span className="text-xs text-gray-500">PNG / JPG</span>
+                    <span className="text-[10px] text-gray-500 sm:text-xs">
+                      PNG / JPG
+                    </span>
                   </div>
                 )}
 
                 <input
                   hidden
                   type="file"
+                  accept="image/png,image/jpeg,image/jpg"
                   onChange={(e) => setImage1(e.target.files[0])}
                   id="image1"
                 />
               </label>
+
+              {/* Image 2 */}
               <label
                 htmlFor="image2"
-                className="cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-black hover:bg-gray-100 transition h-52 flex flex-col items-center justify-center"
+                className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-black hover:bg-gray-100 sm:h-48 sm:rounded-2xl md:h-52"
               >
                 {image2 ? (
                   <img
                     src={URL.createObjectURL(image2)}
                     alt=""
-                    className="m-0.5 w-45"
+                    className="h-full w-full rounded-xl object-contain p-2"
                   />
                 ) : (
-                  <div>
-                    <MdCloudUpload size={45} className="text-gray-500" />
+                  <div className="text-center">
+                    <MdCloudUpload
+                      size={38}
+                      className="mx-auto text-gray-500 sm:size-11"
+                    />
 
-                    <p className="mt-3 font-medium">Upload Image</p>
+                    <p className="mt-2 text-sm font-medium sm:mt-3 sm:text-base">
+                      Upload Image
+                    </p>
 
-                    <span className="text-xs text-gray-500">PNG / JPG</span>
+                    <span className="text-[10px] text-gray-500 sm:text-xs">
+                      PNG / JPG
+                    </span>
                   </div>
                 )}
 
                 <input
                   hidden
                   type="file"
+                  accept="image/png,image/jpeg,image/jpg"
                   onChange={(e) => setImage2(e.target.files[0])}
                   id="image2"
                 />
               </label>
+
+              {/* Image 3 */}
               <label
                 htmlFor="image3"
-                className="cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-black hover:bg-gray-100 transition h-52 flex flex-col items-center justify-center"
+                className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-black hover:bg-gray-100 sm:h-48 sm:rounded-2xl md:h-52"
               >
                 {image3 ? (
                   <img
                     src={URL.createObjectURL(image3)}
                     alt=""
-                    className="m-0.5 w-45"
+                    className="h-full w-full rounded-xl object-contain p-2"
                   />
                 ) : (
-                  <div>
-                    <MdCloudUpload size={45} className="text-gray-500" />
+                  <div className="text-center">
+                    <MdCloudUpload
+                      size={38}
+                      className="mx-auto text-gray-500 sm:size-11"
+                    />
 
-                    <p className="mt-3 font-medium">Upload Image</p>
+                    <p className="mt-2 text-sm font-medium sm:mt-3 sm:text-base">
+                      Upload Image
+                    </p>
 
-                    <span className="text-xs text-gray-500">PNG / JPG</span>
+                    <span className="text-[10px] text-gray-500 sm:text-xs">
+                      PNG / JPG
+                    </span>
                   </div>
                 )}
 
                 <input
                   hidden
                   type="file"
+                  accept="image/png,image/jpeg,image/jpg"
                   onChange={(e) => setImage3(e.target.files[0])}
                   id="image3"
                 />
               </label>
+
+              {/* Image 4 */}
               <label
                 htmlFor="image4"
-                className="cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 hover:border-black hover:bg-gray-100 transition h-52 flex flex-col items-center justify-center"
+                className="flex h-40 cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 transition hover:border-black hover:bg-gray-100 sm:h-48 sm:rounded-2xl md:h-52"
               >
                 {image4 ? (
                   <img
                     src={URL.createObjectURL(image4)}
                     alt=""
-                    className="m-0.5 w-45"
+                    className="h-full w-full rounded-xl object-contain p-2"
                   />
                 ) : (
-                  <div>
-                    <MdCloudUpload size={45} className="text-gray-500" />
+                  <div className="text-center">
+                    <MdCloudUpload
+                      size={38}
+                      className="mx-auto text-gray-500 sm:size-11"
+                    />
 
-                    <p className="mt-3 font-medium">Upload Image</p>
+                    <p className="mt-2 text-sm font-medium sm:mt-3 sm:text-base">
+                      Upload Image
+                    </p>
 
-                    <span className="text-xs text-gray-500">PNG / JPG</span>
+                    <span className="text-[10px] text-gray-500 sm:text-xs">
+                      PNG / JPG
+                    </span>
                   </div>
                 )}
 
                 <input
                   hidden
                   type="file"
+                  accept="image/png,image/jpeg,image/jpg"
                   onChange={(e) => setImage4(e.target.files[0])}
                   id="image4"
                 />
               </label>
             </div>
           </div>
-          {/* Product Name */}
+
+          {/* ================= PRODUCT NAME ================= */}
           <div>
-            <label className="font-medium">Product Name</label>
+            <label className="font-medium text-gray-800">Product Name</label>
 
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-2 w-full rounded-xl border px-5 py-3 outline-none focus:ring-2 focus:ring-black"
+              className="mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-black sm:px-5 sm:text-base"
               placeholder="Luxury Leather Sofa"
             />
           </div>
-          {/* Description */}
+
+          {/* ================= DESCRIPTION ================= */}
           <div>
-            <label className="font-medium">Product Description</label>
+            <label className="font-medium text-gray-800">
+              Product Description
+            </label>
 
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={5}
-              className="mt-2 w-full rounded-xl border px-5 py-3 outline-none resize-none focus:ring-2 focus:ring-black"
+              className="mt-2 w-full resize-none rounded-xl border px-4 py-3 text-sm leading-6 outline-none transition focus:ring-2 focus:ring-black sm:px-5 sm:text-base"
               placeholder="Describe your product..."
             />
           </div>
-          {/* Options */}
-          <div className="grid md:grid-cols-3 gap-6">
+
+          {/* ================= OPTIONS ================= */}
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
+            {/* Material */}
             <div>
-              <label className="font-medium">Material</label>
+              <label className="font-medium text-gray-800">Material</label>
 
               <select
-                defaultValue={"leather"}
+                value={material}
                 onChange={(e) => setMaterial(e.target.value)}
-                className="mt-2 w-full rounded-xl border px-4 py-3 focus:ring-2 focus:ring-black"
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
               >
-                <option value={"leather"}>Leather</option>
-
-                <option value={"fabric"}>Fabric</option>
-
-                <option value={"velvet"}>Velvet</option>
-
-                <option value={"linen"}>Linen</option>
+                <option value="leather">Leather</option>
+                <option value="fabric">Fabric</option>
+                <option value="velvet">Velvet</option>
+                <option value="linen">Linen</option>
               </select>
             </div>
 
+            {/* Seating */}
             <div>
-              <label className="font-medium">Seating Capacity</label>
+              <label className="font-medium text-gray-800">
+                Seating Capacity
+              </label>
 
               <select
                 value={seating}
                 onChange={(e) => setseating(e.target.value)}
-                className="mt-2 w-full rounded-xl border px-4 py-3 bg-white focus:ring-2 focus:ring-black outline-none"
+                className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
               >
                 <option value="">Select Seating Capacity</option>
                 <option value="1 Seater">1 Seater</option>
@@ -295,93 +318,64 @@ const Add = ({ token }) => {
               </select>
             </div>
 
-            <div>
-              <label className="font-medium">Price</label>
+            {/* Price */}
+            <div className="sm:col-span-2 md:col-span-1">
+              <label className="font-medium text-gray-800">Price</label>
+
               <input
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 type="number"
-                placeholder="enter price"
-                className="mt-2 w-full rounded-xl border px-4 py-3 focus:ring-2 focus:ring-black"
+                placeholder="Enter price"
+                className="mt-2 w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
               />
             </div>
           </div>
-          {/* Colors */}
-          <div>
-            <div className="flex justify-between items-center mb-4">
-              <label className="font-medium">Available Colors</label>
 
-              <button
-                type="button"
-                onClick={() => setShowMore(!showMore)}
-                className="flex items-center gap-2 text-sm font-medium text-blue-600 hover:text-blue-800"
-              >
-                {showMore ? (
-                  <>
-                    Show Less
-                    <FiChevronUp />
-                  </>
-                ) : (
-                  <>
-                    Show More
-                    <FiChevronDown />
-                  </>
-                )}
-              </button>
-            </div>
-
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4">
-              {visibleColors.map((color) => (
-                <button
-                  key={color.name}
-                  type="button"
-                  onClick={() => colorHandler(color)}
-                  className={`rounded-xl border p-3 transition-all duration-200 hover:scale-105 hover:shadow-md
-
-                  ${
-                    selectedColor.some((item) => item.name === color.name)
-                      ? "ring-2 ring-black border-black"
-                      : ""
-                  }`}
-                >
-                  <div
-                    className="h-10 w-10 rounded-full mx-auto border"
-                    style={{ background: color.hex }}
-                  />
-
-                  <p className="text-xs mt-2 text-center">{color.name}</p>
-                </button>
-              ))}
-            </div>
-          </div>{" "}
-          <div className="flex items-center gap-8 pt-2">
-            <label className="flex items-center gap-3 text-balance cursor-pointer">
+          {/* ================= CHECKBOXES ================= */}
+          <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:gap-8">
+            <label className="flex cursor-pointer items-center gap-3">
               <input
                 type="checkbox"
                 checked={bestSeller}
                 onChange={() => setBestSeller(!bestSeller)}
-                className="w-5 h-5 accent-black cursor-pointer"
+                className="h-5 w-5 cursor-pointer accent-black"
               />
+
               <span className="font-medium">Best Seller</span>
             </label>
 
-            <label className="flex items-center gap-3 text-balance cursor-pointer">
+            <label className="flex cursor-pointer items-center gap-3">
               <input
                 type="checkbox"
                 checked={onStock}
                 onChange={() => setOnStock(!onStock)}
-                className="w-5 h-5 accent-black cursor-pointer"
+                className="h-5 w-5 cursor-pointer accent-black"
               />
+
               <span className="font-medium">In Stock</span>
             </label>
           </div>
-          {/* Submit */}
-          <div className="pt-5">
+
+          {/* ================= SUBMIT ================= */}
+          <div className="pt-2 sm:pt-5">
             <button
               type="submit"
-              className="rounded-xl bg-black text-white px-10 py-4 hover:bg-gray-800 transition font-semibold"
+              disabled={loading}
+              className={`w-full rounded-xl px-6 py-3.5 font-semibold text-white transition sm:w-auto sm:px-10 sm:py-4 ${
+                loading
+                  ? "cursor-not-allowed bg-gray-600"
+                  : "bg-black hover:bg-gray-800"
+              }`}
             >
-              Add Product
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></span>
+                  Adding Product...
+                </span>
+              ) : (
+                "Add Product"
+              )}
             </button>
           </div>
         </form>

@@ -1,136 +1,100 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { NavLink, Link, useLocation } from "react-router-dom";
-import { Search, ShoppingBag, Menu, X, User, LogOut } from "lucide-react";
-import { ShopContext } from "../context/shopContext";
-import { assets } from "../assets/assets";
+import React, { useContext, useEffect, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import {
+  FiMenu,
+  FiX,
+  FiShoppingBag,
+  FiUser,
+  FiLogOut,
+  FiChevronDown,
+} from "react-icons/fi";
 import axios from "axios";
+import { ShopContext } from "../context/shopContext";
 import { backendUrl } from "../App";
-const Navbar = ({ setToken, setShowLogin, token }) => {
-  const location = useLocation();
 
-  const [menu, setMenu] = useState(false);
-  const [showProfile, setShowProfile] = useState(false);
+const Navbar = ({ setToken, setShowLogin, token }) => {
+  const { getCartCount } = useContext(ShopContext);
+  const navigate = useNavigate();
+
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+
+  // USER DATA
   const [userData, setUserData] = useState(null);
 
-  const profileRef = useRef(null);
+  const cartCount = getCartCount ? getCartCount() : 0;
 
-  const { setShowSearch, showSearch, getCartCount, navigate } =
-    useContext(ShopContext);
+  // =========================================================
+  // GET USER DATA
+  // =========================================================
 
-  // ==========================================
-  // GET USER DETAILS
-  // ==========================================
+  const loadUserData = async () => {
+    try {
+      if (!token) {
+        setUserData(null);
+        return;
+      }
+
+      const response = await axios.get(backendUrl + "/api/user/getuserdata", {
+        headers: {
+          token: token,
+        },
+      });
+
+      if (response.data.success) {
+        setUserData(response.data.userData);
+      } else {
+        console.log(response.data.message);
+        setUserData(null);
+      }
+    } catch (error) {
+      console.log(error);
+      setUserData(null);
+    }
+  };
 
   useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const response = await axios.get(backendUrl + "/api/user/getUserData", {
-          headers: {
-            token: token,
-          },
-        });
-
-        if (response.data.success) {
-          const userData = response.data.userData;
-
-          // This causes Navbar to immediately re-render
-          setUserData(userData);
-
-          // Optional: keep it in localStorage
-          localStorage.setItem("userData", JSON.stringify(userData));
-        }
-      } catch (error) {
-        console.log("Failed to get user data:", error);
-      }
-    };
-
-    if (token) {
-      getUserData();
-    } else {
-      setUserData(null);
-      localStorage.removeItem("userData");
-    }
+    loadUserData();
   }, [token]);
 
-  // ==========================================
-  // CLOSE PROFILE WHEN CLICKING OUTSIDE
-  // ==========================================
+  // =========================================================
+  // SCROLL
+  // =========================================================
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileRef.current && !profileRef.current.contains(event.target)) {
-        setShowProfile(false);
-      }
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
     };
 
-    document.addEventListener("mousedown", handleClickOutside);
+    window.addEventListener("scroll", handleScroll);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
+      window.removeEventListener("scroll", handleScroll);
     };
   }, []);
 
-  // ==========================================
+  // =========================================================
   // LOGOUT
-  // ==========================================
+  // =========================================================
 
-  const logoutHandler = async () => {
-    setShowProfile(false);
-
-    localStorage.removeItem("userData");
+  const handleLogout = () => {
+    localStorage.removeItem("token");
 
     setToken("");
+    setUserData(null);
+    setProfileOpen(false);
 
-    await window.location.reload();
+    navigate("/");
   };
 
-  // ==========================================
-  // USER INITIALS
-  // ==========================================
-
-  const getInitials = () => {
-    if (!userData?.name) return "U";
-
-    const words = userData.name.trim().split(" ");
-
-    if (words.length === 1) {
-      return words[0].charAt(0).toUpperCase();
-    }
-
-    return (
-      words[0].charAt(0) + words[words.length - 1].charAt(0)
-    ).toUpperCase();
+  const closeMobile = () => {
+    setMobileOpen(false);
   };
 
-  // ==========================================
-  // RANDOM AVATAR COLOR
-  // ==========================================
-
-  const avatarColors = [
-    "bg-[#B8864C]",
-    "bg-[#6B7280]",
-    "bg-[#7C6F64]",
-    "bg-[#8B7355]",
-    "bg-[#5F6F52]",
-    "bg-[#8064A2]",
-    "bg-[#64748B]",
-  ];
-
-  const getAvatarColor = () => {
-    if (!userData?.email) return avatarColors[0];
-
-    let hash = 0;
-
-    for (let i = 0; i < userData.email.length; i++) {
-      hash = userData.email.charCodeAt(i) + ((hash << 5) - hash);
-    }
-
-    return avatarColors[Math.abs(hash) % avatarColors.length];
-  };
-
-  // ==========================================
+  // =========================================================
   // NAV ITEMS
-  // ==========================================
+  // =========================================================
 
   const navItems = [
     { name: "Home", path: "/" },
@@ -141,670 +105,701 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
 
   return (
     <>
-      {/* ================= NAVBAR ================= */}
+      {/* =========================================================
+          NAVBAR
+      ========================================================= */}
 
-      <header className="relative z-40 w-full font-manrope">
-        <div className="w-full">
-          <div
-            className="
-              relative
-              flex
-              items-center
-              justify-between
-              w-full
-              h-16
-              sm:h-[72px]
-              px-4
-              sm:px-6
-              lg:px-10
-              bg-[#F7F3EE]
-              border-b
-              border-[#E8DED2]
-            "
-          >
-            {/* ================= LOGO ================= */}
-
-            <Link
-              to="/"
-              onClick={() => setMenu(false)}
-              className="flex items-center shrink-0"
-            >
-              <img
-                src={assets.logo}
-                alt="Logo"
-                className="
-                  w-12
-                  sm:w-16
-                  md:w-20
-                  object-contain
-                  cursor-pointer
-                "
-              />
-            </Link>
-
-            {/* ================= DESKTOP NAV ================= */}
-
-            <nav
-              className="
-                hidden
-                lg:flex
-                items-center
-                gap-1
-                absolute
-                left-1/2
-                -translate-x-1/2
-              "
-            >
-              {navItems.map((item) => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  className={({ isActive }) =>
-                    `
-                    relative
-                    px-4
-                    py-2
-                    text-[13px]
-                    uppercase
-                    tracking-[0.12em]
-                    font-medium
-                    transition-all
-                    duration-300
-
-                    ${
-                      isActive
-                        ? "text-[#B8864C]"
-                        : "text-[#4A4540] hover:text-[#B8864C]"
-                    }
-
-                    after:absolute
-                    after:left-1/2
-                    after:-translate-x-1/2
-                    after:-bottom-1
-                    after:h-[1.5px]
-                    after:bg-[#B8864C]
-                    after:transition-all
-                    after:duration-300
-
-                    ${isActive ? "after:w-6" : "after:w-0 hover:after:w-6"}
-                    `
-                  }
-                >
-                  {item.name}
-                </NavLink>
-              ))}
-            </nav>
-
-            {/* ================= RIGHT SIDE ================= */}
-
-            <div className="flex items-center gap-1 sm:gap-3 ml-auto">
-              {/* SEARCH */}
-
-              {location.pathname === "/collection" && (
-                <button
-                  onClick={() => setShowSearch(!showSearch)}
-                  className="
-                    group
-                    flex
-                    items-center
-                    justify-center
-                    w-10
-                    h-10
-                    rounded-xl
-                    hover:bg-white
-                    transition-all
-                    duration-300
-                    cursor-pointer
-                  "
-                  aria-label="Search"
-                >
-                  <Search
-                    size={20}
-                    strokeWidth={1.7}
-                    className="
-                      text-[#2C2926]
-                      group-hover:text-[#B8864C]
-                      group-hover:scale-110
-                      transition
-                    "
-                  />
-                </button>
-              )}
-
-              {/* CART */}
-
-              <Link
-                to="/cart"
-                className="
-                  group
-                  relative
-                  flex
-                  items-center
-                  justify-center
-                  w-10
-                  h-10
-                  rounded-xl
-                  hover:bg-white
-                  transition-all
-                  duration-300
-                "
-              >
-                <ShoppingBag
-                  size={21}
-                  strokeWidth={1.7}
-                  className="
-                    text-[#2C2926]
-                    group-hover:text-[#B8864C]
-                    group-hover:scale-110
-                    transition
-                  "
-                />
-
-                {getCartCount() > 0 && (
-                  <span
-                    className="
-                      absolute
-                      -top-0.5
-                      -right-0.5
-                      min-w-[17px]
-                      h-[17px]
-                      px-1
-                      flex
-                      items-center
-                      justify-center
-                      rounded-full
-                      bg-[#B8864C]
-                      text-white
-                      text-[9px]
-                      font-semibold
-                    "
-                  >
-                    {getCartCount()}
-                  </span>
-                )}
-              </Link>
-
-              {/* ================= DESKTOP AUTH ================= */}
-
-              {!token ? (
-                <button
-                  onClick={() => setShowLogin(true)}
-                  className="
-                    hidden
-                    sm:flex
-                    items-center
-                    justify-center
-                    gap-2
-                    h-10
-                    px-5
-                    rounded-xl
-                    bg-[#2C2926]
-                    text-white
-                    text-xs
-                    uppercase
-                    tracking-[0.12em]
-                    font-medium
-                    hover:bg-[#B8864C]
-                    transition-all
-                    duration-300
-                    cursor-pointer
-                  "
-                >
-                  <User size={16} strokeWidth={1.8} />
-                  <span>Sign In</span>
-                </button>
-              ) : (
-                /* ================= PROFILE ================= */
-
-                <div ref={profileRef} className="hidden sm:block relative">
-                  <button
-                    onClick={() => setShowProfile(!showProfile)}
-                    className="
-                      flex
-                      items-center
-                      justify-center
-                      w-10
-                      h-10
-                      rounded-full
-                      hover:scale-105
-                      transition-all
-                      duration-200
-                      cursor-pointer
-                      focus:outline-none
-                    "
-                  >
-                    <div
-                      className={`
-                        w-10
-                        h-10
-                        rounded-full
-                        ${getAvatarColor()}
-                        text-white
-                        flex
-                        items-center
-                        justify-center
-                        text-md
-                        font-semibold
-                        uppercase
-                        shadow-sm
-                      `}
-                    >
-                      {getInitials()}
-                    </div>
-                  </button>
-
-                  {/* PROFILE DROPDOWN */}
-
-                  {showProfile && (
-                    <div
-                      className="
-                        absolute
-                        right-0
-                        top-14
-                        w-72
-                        bg-white
-                        rounded-2xl
-                        shadow-xl
-                        border
-                        border-[#E8DED2]
-                        overflow-hidden
-                        z-50
-                      "
-                    >
-                      {/* USER INFO */}
-
-                      <div className="px-5 py-5 bg-[#F7F3EE]">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`
-                              w-12
-                              h-12
-                              shrink-0
-                              rounded-full
-                              ${getAvatarColor()}
-                              text-white
-                              flex
-                              items-center
-                              justify-center
-                              text-sm
-                              font-semibold
-                            `}
-                          >
-                            {getInitials()}
-                          </div>
-
-                          <div className="min-w-0">
-                            <p className="text-sm font-semibold text-[#2C2926] truncate">
-                              {userData?.name || "User"}
-                            </p>
-
-                            <p className="text-xs text-[#8A8178] truncate mt-1">
-                              {userData?.email || "Email unavailable"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* PROFILE OPTIONS */}
-
-                      <div className="p-2">
-                        <Link
-                          to="/orders"
-                          onClick={() => setShowProfile(false)}
-                          className="
-                            flex
-                            items-center
-                            gap-3
-                            px-4
-                            py-3
-                            rounded-xl
-                            text-sm
-                            text-[#4A4540]
-                            hover:bg-[#F7F3EE]
-                            hover:text-[#B8864C]
-                            transition
-                          "
-                        >
-                          <ShoppingBag size={17} />
-                          My Orders
-                        </Link>
-
-                        <button
-                          onClick={logoutHandler}
-                          className="
-                            w-full
-                            flex
-                            items-center
-                            gap-3
-                            px-4
-                            py-3
-                            rounded-xl
-                            text-sm
-                            text-red-500
-                            hover:bg-red-50
-                            transition
-                          "
-                        >
-                          <LogOut size={17} />
-                          Log Out
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ================= MOBILE MENU BUTTON ================= */}
-
-              <button
-                onClick={() => setMenu(true)}
-                className="
-                  lg:hidden
-                  flex
-                  items-center
-                  justify-center
-                  w-10
-                  h-10
-                  rounded-xl
-                  hover:bg-white
-                  transition
-                  cursor-pointer
-                "
-                aria-label="Open menu"
-              >
-                <Menu size={23} strokeWidth={1.7} className="text-[#2C2926]" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* ================= MOBILE OVERLAY ================= */}
-
-      <div
-        onClick={() => setMenu(false)}
+      <header
         className={`
           fixed
-          inset-0
-          bg-black/30
-          backdrop-blur-[2px]
-          z-40
-          transition-opacity
-          duration-300
+          left-0
+          right-0
+          top-0
+          z-50
+          transition-all
+          duration-500
 
           ${
-            menu
-              ? "opacity-100 visible"
-              : "opacity-0 invisible pointer-events-none"
+            scrolled
+              ? "bg-[#FCFAF7]/90 shadow-[0_8px_30px_rgba(60,45,35,0.07)] backdrop-blur-xl"
+              : "bg-[#FCFAF7]"
           }
         `}
-      />
-
-      {/* ================= MOBILE SIDE MENU ================= */}
-
-      <aside
-        className={`
-          fixed
-          top-0
-          right-0
-          z-50
-          h-screen
-          w-[82%]
-          max-w-sm
-          bg-[#F7F3EE]
-          shadow-[-10px_0_40px_rgba(0,0,0,0.15)]
-
-          transition-transform
-          duration-500
-          ease-[cubic-bezier(0.4,0,0.2,1)]
-
-          ${menu ? "translate-x-0" : "translate-x-full"}
-        `}
       >
-        {/* ================= MOBILE HEADER ================= */}
-
         <div
           className="
+            mx-auto
             flex
+            h-[76px]
+            max-w-[1600px]
             items-center
             justify-between
-            px-6
-            py-5
-            border-b
-            border-[#E5DCD2]
+            px-5
+
+            sm:h-[82px]
+            sm:px-8
+
+            lg:px-10
+
+            xl:px-14
           "
         >
-          <Link to="/" onClick={() => setMenu(false)}>
-            <img src={assets.logo} alt="Logo" className="w-16" />
+          {/* =====================================================
+              LOGO
+          ===================================================== */}
+
+          <Link
+            to="/"
+            onClick={closeMobile}
+            className="group relative flex items-center"
+          >
+            <div className="flex flex-col">
+              <span
+                className="
+                  font-heading
+                  text-[25px]
+                  font-medium
+                  leading-none
+                  tracking-[-0.035em]
+                  text-[#332922]
+
+                  sm:text-[28px]
+                "
+              >
+                RSU
+              </span>
+
+              <div className="mt-1.5 flex items-center gap-2">
+                <span className="h-px w-5 bg-[#A97849]" />
+
+                <span
+                  className="
+                    font-manrope
+                    text-[7px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.32em]
+                    text-[#947963]
+                  "
+                >
+                  & furnitures
+                </span>
+              </div>
+            </div>
           </Link>
 
-          <button
-            onClick={() => setMenu(false)}
+          {/* =====================================================
+              DESKTOP NAVIGATION
+          ===================================================== */}
+
+          <nav
             className="
-              w-10
-              h-10
-              rounded-xl
-              flex
+              hidden
               items-center
-              justify-center
-              hover:bg-white
-              transition
-              cursor-pointer
+              gap-9
+              lg:flex
+              xl:gap-11
             "
           >
-            <X size={22} strokeWidth={1.7} className="text-[#2C2926]" />
-          </button>
-        </div>
-
-        {/* ================= MOBILE USER ================= */}
-
-        {token && (
-          <div className="px-6 pt-7">
-            <div className="flex items-center gap-3">
-              <div
-                className={`
-          w-12
-          h-12
-          rounded-full
-          ${getAvatarColor()}
-          text-white
-          flex
-          items-center
-          justify-center
-          text-sm
-          font-semibold
-        `}
-              >
-                {getInitials()}
-              </div>
-
-              <div className="min-w-0">
-                <p className="text-sm font-semibold text-[#2C2926] truncate">
-                  {userData?.name || "User"}
-                </p>
-
-                <p className="text-xs text-[#8A8178] truncate mt-1">
-                  {userData?.email || "Email unavailable"}
-                </p>
-              </div>
-            </div>
-
-            <div className="mt-5">
-              <Link
-                to="/orders"
-                onClick={() => setMenu(false)}
-                className="group flex items-center justify-between w-full px-4 py-3.5 rounded-xl bg-white border border-[#E5DCD2] text-[#2C2926] hover:bg-[#2C2926] hover:text-white hover:border-[#2C2926] transition-all duration-300"
-              >
-                <div className="flex items-center gap-3">
-                  <ShoppingBag
-                    size={18}
-                    strokeWidth={1.7}
-                    className="text-[#B8864C] group-hover:text-white transition-colors duration-300"
-                  />
-
-                  <span className="text-sm font-medium">My Orders</span>
-                </div>
-
-                <span className="text-[#B8864C] group-hover:text-white group-hover:translate-x-1 transition-all duration-300">
-                  →
-                </span>
-              </Link>
-            </div>
-          </div>
-        )}
-
-        {/* ================= MOBILE NAVIGATION ================= */}
-
-        <nav className="px-6 py-8">
-          <p
-            className="
-              text-[10px]
-              uppercase
-              tracking-[0.25em]
-              text-[#A0968C]
-              mb-5
-            "
-          >
-            Navigation
-          </p>
-
-          <div className="flex flex-col">
             {navItems.map((item) => (
               <NavLink
                 key={item.path}
                 to={item.path}
-                onClick={() => setMenu(false)}
-                className={({ isActive }) =>
-                  `
+                className={({ isActive }) => `
                   group
-                  flex
-                  items-center
-                  justify-between
-                  py-4
-                  border-b
-                  border-[#E5DCD2]
-                  text-base
+                  relative
+                  py-3
+
+                  font-heading
+                  text-[17px]
+                  font-medium
+                  tracking-[-0.01em]
+
                   transition-all
                   duration-300
 
                   ${
                     isActive
-                      ? "text-[#B8864C] pl-2"
-                      : "text-[#2C2926] hover:text-[#B8864C] hover:pl-2"
+                      ? "text-[#8C633F]"
+                      : "text-[#4B4038] hover:text-[#A97849]"
                   }
-                  `
-                }
+                `}
               >
-                <span>{item.name}</span>
+                {({ isActive }) => (
+                  <>
+                    <span className="relative z-10">{item.name}</span>
 
-                <span
-                  className="
-                    text-[#B8864C]
-                    opacity-0
-                    group-hover:opacity-100
-                    transition
-                  "
-                >
-                  →
-                </span>
+                    <span
+                      className={`
+                        absolute
+                        bottom-1
+                        left-0
+                        h-[1.5px]
+                        bg-[#A97849]
+                        transition-all
+                        duration-400
+                        ease-out
+
+                        ${isActive ? "w-full" : "w-0 group-hover:w-full"}
+                      `}
+                    />
+
+                    <span
+                      className={`
+                        absolute
+                        -right-2
+                        top-2
+                        h-1
+                        w-1
+                        rounded-full
+                        bg-[#A97849]
+                        transition-all
+                        duration-300
+
+                        ${
+                          isActive
+                            ? "scale-100 opacity-100"
+                            : "scale-0 opacity-0 group-hover:scale-100 group-hover:opacity-100"
+                        }
+                      `}
+                    />
+                  </>
+                )}
               </NavLink>
             ))}
-          </div>
+          </nav>
 
-          {/* ================= MOBILE AUTH ================= */}
+          {/* =====================================================
+              RIGHT ACTIONS
+          ===================================================== */}
 
-          <div className="mt-10">
-            {!token ? (
-              <button
-                onClick={() => {
-                  setMenu(false);
-                  setShowLogin(true);
-                }}
-                className="
-                  w-full
-                  flex
-                  items-center
-                  justify-center
-                  gap-2
-                  py-4
-                  rounded-xl
-                  bg-[#2C2926]
-                  text-white
-                  uppercase
-                  text-xs
-                  tracking-[0.15em]
-                  hover:bg-[#B8864C]
-                  transition
-                  cursor-pointer
-                "
-              >
-                <User size={17} />
-                Sign In / Register
-              </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div
+              className="
+                mr-1
+                hidden
+                h-7
+                w-px
+                bg-[#DDD2C8]
+                lg:block
+              "
+            />
+
+            {/* ===================================================
+                USER
+            =================================================== */}
+
+            {token ? (
+              <div className="relative hidden sm:block">
+                <button
+                  type="button"
+                  onClick={() => setProfileOpen(!profileOpen)}
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    rounded-full
+                    border
+                    border-[#DDD1C5]
+                    bg-white/50
+                    px-3
+                    py-1.5
+                    transition-all
+                    duration-300
+                    hover:border-[#A97849]
+                    hover:bg-white
+                  "
+                >
+                  {/* Avatar */}
+                  <span
+                    className="
+                      flex
+                      h-8
+                      w-8
+                      shrink-0
+                      items-center
+                      justify-center
+                      rounded-full
+                      bg-[#EEE4DA]
+                      font-heading
+                      text-sm
+                      font-semibold
+                      text-[#80634B]
+                    "
+                  >
+                    {userData?.name?.charAt(0)?.toUpperCase() || "U"}
+                  </span>
+
+                  {/* Name + Email */}
+                  <div className="hidden text-left xl:block">
+                    <p
+                      className="
+                        font-manrope
+                        text-[11px]
+                        font-bold
+                        leading-tight
+                        text-[#40352E]
+                      "
+                    >
+                      {userData?.name || "Account"}
+                    </p>
+
+                    <p
+                      className="
+                        mt-0.5
+                        max-w-[130px]
+                        truncate
+                        font-manrope
+                        text-[9px]
+                        leading-tight
+                        text-[#8A7A6D]
+                      "
+                    >
+                      {userData?.email || ""}
+                    </p>
+                  </div>
+
+                  <FiChevronDown
+                    className={`
+                      ml-1
+                      text-xs
+                      text-[#80634B]
+                      transition-transform
+                      duration-300
+
+                      ${profileOpen ? "rotate-180" : ""}
+                    `}
+                  />
+                </button>
+
+                {/* =================================================
+                    ACCOUNT DROPDOWN
+                ================================================= */}
+
+                {profileOpen && (
+                  <div
+                    className="
+                      absolute
+                      right-0
+                      top-[calc(100%+12px)]
+                      w-64
+                      overflow-hidden
+                      rounded-2xl
+                      border
+                      border-[#E2D7CD]
+                      bg-[#FCFAF7]
+                      p-2
+                      shadow-[0_20px_50px_rgba(54,40,30,0.12)]
+                    "
+                  >
+                    {/* User information */}
+
+                    <div
+                      className="
+                        border-b
+                        border-[#E8DED5]
+                        px-3
+                        py-3
+                      "
+                    >
+                      <p
+                        className="
+                          font-heading
+                          text-base
+                          font-semibold
+                          text-[#332922]
+                        "
+                      >
+                        {userData?.name || "User"}
+                      </p>
+
+                      <p
+                        className="
+                          mt-1
+                          truncate
+                          font-manrope
+                          text-[11px]
+                          text-[#8A7A6D]
+                        "
+                      >
+                        {userData?.email || "No email available"}
+                      </p>
+                    </div>
+
+                    {/* My Orders */}
+
+                    <Link
+                      to="/orders"
+                      onClick={() => setProfileOpen(false)}
+                      className="
+                        mt-1
+                        flex
+                        items-center
+                        rounded-xl
+                        px-3
+                        py-3
+                        font-manrope
+                        text-sm
+                        font-semibold
+                        text-[#55483F]
+                        transition-colors
+                        hover:bg-[#F0E8E0]
+                      "
+                    >
+                      My Orders
+                    </Link>
+
+                    {/* Logout */}
+
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="
+                        flex
+                        w-full
+                        items-center
+                        gap-2
+                        rounded-xl
+                        px-3
+                        py-3
+                        font-manrope
+                        text-left
+                        text-sm
+                        font-semibold
+                        text-[#55483F]
+                        transition-colors
+                        hover:bg-[#F0E8E0]
+                      "
+                    >
+                      <FiLogOut />
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
             ) : (
               <button
-                onClick={() => {
-                  setMenu(false);
-                  logoutHandler();
-                }}
+                type="button"
+                onClick={() => setShowLogin(true)}
                 className="
-                  w-full
-                  flex
+                  hidden
                   items-center
-                  justify-center
                   gap-2
-                  py-4
-                  rounded-xl
-                  bg-[#2C2926]
-                  text-white
+                  font-manrope
+                  text-[10px]
+                  font-semibold
                   uppercase
-                  text-xs
-                  tracking-[0.15em]
-                  hover:bg-[#B8864C]
-                  transition
-                  cursor-pointer
+                  tracking-[0.12em]
+                  text-[#55483F]
+                  transition-colors
+                  duration-300
+                  hover:text-[#A97849]
+                  sm:flex
                 "
               >
-                <LogOut size={17} />
-                Log Out
+                <FiUser className="text-sm" />
+                Login
               </button>
             )}
-          </div>
-        </nav>
 
-        {/* ================= MOBILE FOOTER ================= */}
+            {/* ===================================================
+                CART
+            =================================================== */}
+
+            <Link
+              to="/cart"
+              className="
+                group
+                relative
+                flex
+                h-10
+                w-10
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-[#DCCFC3]
+                bg-white/50
+                text-[#594A40]
+                transition-all
+                duration-300
+                hover:border-[#A97849]
+                hover:bg-[#A97849]
+                hover:text-white
+
+                sm:h-11
+                sm:w-11
+              "
+            >
+              <FiShoppingBag
+                className="
+                  text-[17px]
+                  transition-transform
+                  duration-300
+                  group-hover:-translate-y-0.5
+                "
+              />
+
+              {cartCount > 0 && (
+                <span
+                  className="
+                    absolute
+                    -right-1
+                    -top-1
+                    flex
+                    h-[18px]
+                    min-w-[18px]
+                    items-center
+                    justify-center
+                    rounded-full
+                    bg-[#A97849]
+                    px-1
+                    font-manrope
+                    text-[8px]
+                    font-bold
+                    text-white
+                    ring-2
+                    ring-[#FCFAF7]
+                  "
+                >
+                  {cartCount}
+                </span>
+              )}
+            </Link>
+
+            {/* ===================================================
+                MOBILE MENU
+            =================================================== */}
+
+            <button
+              type="button"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              className="
+                flex
+                h-10
+                w-10
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-[#DCCFC3]
+                text-[#594A40]
+                transition-all
+                duration-300
+                hover:border-[#A97849]
+                hover:bg-[#A97849]
+                hover:text-white
+                lg:hidden
+              "
+              aria-label="Toggle menu"
+            >
+              {mobileOpen ? (
+                <FiX className="text-lg" />
+              ) : (
+                <FiMenu className="text-lg" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* =========================================================
+            MOBILE MENU
+        ========================================================= */}
 
         <div
-          className="
-            absolute
-            bottom-0
-            left-0
-            right-0
-            px-6
-            py-6
-          "
-        >
-          <div
-            className="
-              h-px
-              bg-[#E5DCD2]
-              mb-5
-            "
-          />
+          className={`
+            overflow-hidden
+            border-t
+            border-[#E5DCD4]
+            bg-[#FCFAF7]/98
+            transition-all
+            duration-500
+            lg:hidden
 
-          <p
-            className="
-              text-[10px]
-              uppercase
-              tracking-[0.2em]
-              text-[#A0968C]
-              text-center
-            "
-          >
-            Crafted for your space
-          </p>
+            ${mobileOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"}
+          `}
+        >
+          <div className="px-5 pb-6 pt-3 sm:px-8">
+            <nav className="flex flex-col">
+              {navItems.map((item, index) => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={closeMobile}
+                  className={({ isActive }) => `
+                    flex
+                    items-center
+                    justify-between
+                    border-b
+                    border-[#E8DED5]
+                    py-4
+                    font-heading
+                    text-lg
+                    transition-colors
+                    duration-300
+
+                    ${
+                      isActive
+                        ? "text-[#A97849]"
+                        : "text-[#40352E] hover:text-[#A97849]"
+                    }
+                  `}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <span>{item.name}</span>
+
+                      <span
+                        className={`
+                          font-manrope
+                          text-[9px]
+                          tracking-[0.2em]
+                          ${isActive ? "opacity-100" : "opacity-30"}
+                        `}
+                      >
+                        0{index + 1}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Mobile account */}
+
+            <div className="mt-5">
+              {token ? (
+                <>
+                  {/* Mobile user information */}
+
+                  <div
+                    className="
+                      mb-3
+                      rounded-xl
+                      border
+                      border-[#E0D5CB]
+                      bg-[#F5EFE9]
+                      px-4
+                      py-3
+                    "
+                  >
+                    <p
+                      className="
+                        font-heading
+                        text-base
+                        font-semibold
+                        text-[#332922]
+                      "
+                    >
+                      {userData?.name || "User"}
+                    </p>
+
+                    <p
+                      className="
+                        mt-1
+                        truncate
+                        font-manrope
+                        text-[11px]
+                        font-medium
+                        text-[#8A7A6D]
+                      "
+                    >
+                      {userData?.email || ""}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <Link
+                      to="/orders"
+                      onClick={closeMobile}
+                      className="
+                        flex
+                        flex-1
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        border
+                        border-[#D7CABE]
+                        py-3
+                        font-manrope
+                        text-[10px]
+                        font-bold
+                        uppercase
+                        tracking-[0.1em]
+                        text-[#594A40]
+                      "
+                    >
+                      <FiShoppingBag />
+                      My Orders
+                    </Link>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleLogout();
+                        closeMobile();
+                      }}
+                      className="
+                        flex
+                        flex-1
+                        items-center
+                        justify-center
+                        gap-2
+                        rounded-xl
+                        bg-[#40352E]
+                        py-3
+                        font-manrope
+                        text-[10px]
+                        font-bold
+                        uppercase
+                        tracking-[0.1em]
+                        text-white
+                      "
+                    >
+                      <FiLogOut />
+                      Logout
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLogin(true);
+                    closeMobile();
+                  }}
+                  className="
+                    flex
+                    w-full
+                    items-center
+                    justify-center
+                    gap-2
+                    rounded-xl
+                    bg-[#A97849]
+                    py-3.5
+                    font-manrope
+                    text-[10px]
+                    font-bold
+                    uppercase
+                    tracking-[0.12em]
+                    text-white
+                  "
+                >
+                  <FiUser />
+                  Login to Account
+                </button>
+              )}
+            </div>
+          </div>
         </div>
-      </aside>
+      </header>
+
+      {/* =========================================================
+          NAVBAR SPACER
+      ========================================================= */}
+
+      <div className="h-[76px] sm:h-[82px]" />
     </>
   );
 };

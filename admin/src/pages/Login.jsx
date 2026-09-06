@@ -4,16 +4,20 @@ import logo from "../assets/logo.svg";
 import { backendUrl } from "../App";
 import axios from "axios";
 import { toast } from "react-toastify";
+
 const Login = ({ setToken }) => {
   const [user, setUser] = useState("");
   const [password, setPassword] = useState("");
+
   const onSubmitHandler = async (e) => {
     try {
       e.preventDefault();
+
       const response = await axios.post(backendUrl + "/api/user/admin", {
         user,
         password,
       });
+
       if (response.data.success) {
         setToken(response.data.token);
         toast.success("Admin logged in");
@@ -24,73 +28,234 @@ const Login = ({ setToken }) => {
       toast.error(error.message);
     }
   };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-white to-gray-200 flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-3xl bg-white shadow-2xl border border-gray-200 p-8">
-        {/* Logo */}
+    <div
+      className="
+        flex
+        min-h-screen
+        items-center
+        justify-center
+        bg-gradient-to-br
+        from-gray-100
+        via-white
+        to-gray-200
+        px-3
+        py-6
+        sm:px-4
+      "
+    >
+      <div
+        className="
+          w-full
+          max-w-md
+          rounded-2xl
+          border
+          border-gray-200
+          bg-white
+          p-5
+          shadow-2xl
+          sm:rounded-3xl
+          sm:p-8
+        "
+      >
+        {/* ================= LOGO ================= */}
 
         <div className="flex flex-col items-center">
-          <img src={logo} alt="Logo" className="h-16 mb-5" />
+          <img
+            src={logo}
+            alt="Logo"
+            className="
+              mb-4
+              h-12
+              w-auto
+              sm:mb-5
+              sm:h-16
+            "
+          />
 
-          <h1 className="text-3xl font-bold text-gray-800">Admin Login</h1>
+          <h1
+            className="
+              text-2xl
+              font-bold
+              text-gray-800
+              sm:text-3xl
+            "
+          >
+            Admin Login
+          </h1>
 
-          <p className="mt-2 text-sm text-gray-500">
+          <p
+            className="
+              mt-2
+              max-w-xs
+              text-center
+              text-xs
+              text-gray-500
+              sm:text-sm
+            "
+          >
             Sign in to manage your furniture store
           </p>
         </div>
 
-        {/* Form */}
+        {/* ================= FORM ================= */}
 
-        <form onSubmit={(e) => onSubmitHandler(e)} className="mt-8 space-y-6">
-          {/* Username */}
+        <form
+          onSubmit={onSubmitHandler}
+          className="
+            mt-6
+            space-y-5
+            sm:mt-8
+            sm:space-y-6
+          "
+        >
+          {/* ================= USERNAME ================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              className="
+                mb-2
+                block
+                text-sm
+                font-medium
+                text-gray-700
+              "
+            >
               Username
             </label>
 
-            <div className="flex items-center rounded-xl border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-black">
-              <FiUser className="text-gray-400" size={18} />
+            <div
+              className="
+                flex
+                w-full
+                items-center
+                rounded-xl
+                border
+                border-gray-300
+                px-3
+                py-3
+                transition
+                focus-within:border-black
+                focus-within:ring-2
+                focus-within:ring-black/10
+                sm:px-4
+              "
+            >
+              <FiUser className="shrink-0 text-gray-400" size={18} />
 
               <input
                 onChange={(e) => setUser(e.target.value)}
+                value={user}
                 type="text"
                 placeholder="Enter username"
-                className="ml-3 w-full outline-none"
+                autoComplete="username"
+                required
+                className="
+                  ml-3
+                  min-w-0
+                  w-full
+                  bg-transparent
+                  text-sm
+                  text-gray-900
+                  outline-none
+                  placeholder:text-gray-400
+                "
               />
             </div>
           </div>
 
-          {/* Password */}
+          {/* ================= PASSWORD ================= */}
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label
+              className="
+                mb-2
+                block
+                text-sm
+                font-medium
+                text-gray-700
+              "
+            >
               Password
             </label>
 
-            <div className="flex items-center rounded-xl border border-gray-300 px-4 py-3 focus-within:ring-2 focus-within:ring-black">
-              <FiLock className="text-gray-400" size={18} />
+            <div
+              className="
+                flex
+                w-full
+                items-center
+                rounded-xl
+                border
+                border-gray-300
+                px-3
+                py-3
+                transition
+                focus-within:border-black
+                focus-within:ring-2
+                focus-within:ring-black/10
+                sm:px-4
+              "
+            >
+              <FiLock className="shrink-0 text-gray-400" size={18} />
 
               <input
                 onChange={(e) => setPassword(e.target.value)}
+                value={password}
                 type="password"
                 placeholder="Enter password"
-                className="ml-3 w-full outline-none"
+                autoComplete="current-password"
+                required
+                className="
+                  ml-3
+                  min-w-0
+                  w-full
+                  bg-transparent
+                  text-sm
+                  text-gray-900
+                  outline-none
+                  placeholder:text-gray-400
+                "
               />
             </div>
           </div>
 
-          {/* Login Button */}
+          {/* ================= LOGIN BUTTON ================= */}
 
           <button
             type="submit"
-            className="w-full rounded-xl bg-black py-3 font-semibold text-white transition duration-200 hover:bg-gray-800 active:scale-[0.98]"
+            className="
+              w-full
+              rounded-xl
+              bg-black
+              py-3
+              text-sm
+              font-semibold
+              text-white
+              transition
+              duration-200
+              hover:bg-gray-800
+              active:scale-[0.98]
+              sm:text-base
+            "
           >
             Sign In
           </button>
         </form>
 
-        <p className="mt-8 text-center text-sm text-gray-500">
+        {/* ================= FOOTER ================= */}
+
+        <p
+          className="
+            mt-6
+            text-center
+            text-xs
+            leading-relaxed
+            text-gray-500
+            sm:mt-8
+            sm:text-sm
+          "
+        >
           Restricted access • Authorized administrators only
         </p>
       </div>

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from "react";
+import { FiArrowUpRight, FiPackage, FiShoppingBag } from "react-icons/fi";
 import { ShopContext } from "../context/shopContext";
 import axios from "axios";
 import { backendUrl } from "../App";
@@ -15,38 +16,38 @@ const formatDate = (date) => {
 const getOrderStatusStyle = (status) => {
   switch (status?.toLowerCase()) {
     case "delivered":
-      return "bg-emerald-50 text-emerald-700 border border-emerald-100";
+      return "bg-[#EAF5EC] text-[#39734A] border-[#CFE6D4]";
 
     case "processing":
-      return "bg-amber-50 text-amber-700 border border-amber-100";
+      return "bg-[#FBF1DF] text-[#9A672E] border-[#EBD7B5]";
 
     case "shipped":
-      return "bg-blue-50 text-blue-700 border border-blue-100";
+      return "bg-[#EAF1F8] text-[#426886] border-[#D1DFEC]";
 
     case "cancelled":
-      return "bg-red-50 text-red-600 border border-red-100";
+      return "bg-[#FBEAEA] text-[#A64A4A] border-[#EBCFCF]";
 
     default:
-      return "bg-gray-50 text-gray-600 border border-gray-200";
+      return "bg-[#F3F0EC] text-[#6F665D] border-[#DDD6CF]";
   }
 };
 
 const getOrderStatusDot = (status) => {
   switch (status?.toLowerCase()) {
     case "delivered":
-      return "bg-emerald-500";
+      return "bg-[#4E9A63]";
 
     case "processing":
-      return "bg-amber-500";
+      return "bg-[#C58B50]";
 
     case "shipped":
-      return "bg-blue-500";
+      return "bg-[#527B9C]";
 
     case "cancelled":
-      return "bg-red-500";
+      return "bg-[#C65B5B]";
 
     default:
-      return "bg-gray-400";
+      return "bg-[#9A9188]";
   }
 };
 
@@ -67,7 +68,6 @@ const Orders = () => {
       );
 
       if (response.data.success) {
-        console.log(response.data.orders);
         setOrderData(response.data.orders);
       } else {
         toast.error(response.data.message);
@@ -82,124 +82,296 @@ const Orders = () => {
   }, [token]);
 
   return (
-    <div className="min-h-screen bg-[#f7f3ed] px-6 py-16 sm:px-12 lg:px-20">
-      <div className="mx-auto max-w-5xl">
-        {/* Heading */}
-        <div className="mb-16 text-center">
-          <p className="mb-3 text-[11px] font-medium uppercase tracking-[0.35em] text-[#9b8f82]">
-            Account
-          </p>
+    <div className="min-h-screen bg-[#F8F5F0] px-3 py-10 font-manrope sm:px-5 sm:py-14 lg:px-8 lg:py-16">
+      <div className="mx-auto max-w-[1200px]">
+        {/* =====================================================
+            PAGE HEADER
+        ===================================================== */}
 
-          <h1 className="text-3xl font-normal tracking-tight text-[#292521] sm:text-4xl">
-            My Orders
+        <div className="mb-10 text-center sm:mb-12">
+          <div className="mb-4 flex items-center justify-center gap-3">
+            <span className="h-px w-7 bg-[#B08A68] sm:w-10" />
+
+            <span className="font-manrope text-[9px] font-bold uppercase tracking-[0.3em] text-[#907B68] sm:text-[10px]">
+              Your Account
+            </span>
+
+            <span className="h-px w-7 bg-[#B08A68] sm:w-10" />
+          </div>
+
+          <h1 className="font-heading text-[38px] font-semibold leading-none tracking-[-0.035em] text-[#29231F] sm:text-[48px]">
+            My <span className="text-[#80634B]">Orders</span>
           </h1>
 
-          <div className="mx-auto mt-5 h-px w-10 bg-[#b8a894]" />
+          <p className="mx-auto mt-4 max-w-md text-[11px] font-medium leading-5 text-[#81766C] sm:text-xs">
+            Keep track of your purchases and order details in one place.
+          </p>
         </div>
 
-        {/* Orders */}
-        <div>
+        {/* =====================================================
+            ORDER COUNT
+        ===================================================== */}
+
+        {orderData.length > 0 && (
+          <div className="mb-6 flex items-center justify-between border-b border-[#DED5CC] pb-4">
+            <div className="flex items-center gap-2">
+              <FiPackage className="text-[#80634B]" size={17} />
+
+              <span className="font-manrope text-xs font-bold uppercase tracking-[0.12em] text-[#51463D] sm:text-sm">
+                Order History
+              </span>
+            </div>
+
+            <span className="rounded-full bg-[#EAE1D7] px-3 py-1 font-manrope text-[10px] font-bold text-[#6C5A4A]">
+              {orderData.length} {orderData.length === 1 ? "Order" : "Orders"}
+            </span>
+          </div>
+        )}
+
+        {/* =====================================================
+            ORDERS
+        ===================================================== */}
+
+        <div className="space-y-5">
           {orderData.map((order) =>
             order.items.map((item, index) => (
-              <div
+              <article
                 key={`${order._id}-${index}`}
-                className="grid grid-cols-1 gap-8 border-b border-[#ded7ce] py-10 sm:grid-cols-[220px_1fr_auto] sm:gap-10"
+                className="
+                  group
+                  overflow-hidden
+                  rounded-2xl
+                  border
+                  border-[#E1D8CF]
+                  bg-[#FCFAF7]
+                  shadow-[0_8px_30px_rgba(70,52,37,0.05)]
+                  transition-all
+                  duration-300
+                  hover:border-[#D2C0AE]
+                  hover:shadow-[0_15px_40px_rgba(70,52,37,0.09)]
+                  sm:rounded-3xl
+                "
               >
-                {/* Product Image */}
-                <div className="h-48 w-full overflow-hidden bg-[#ebe5dd] sm:h-40">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]"
-                  />
-                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[210px_1fr_auto]">
+                  {/* =================================================
+                      PRODUCT IMAGE
+                  ================================================= */}
 
-                {/* Product Information */}
-                <div className="flex flex-col justify-center">
-                  {/* Order ID */}
-                  <p className="mb-2 text-[10px] font-medium uppercase tracking-[0.18em] text-[#a69a8d]">
-                    Order #{order._id.slice(0, 5)}
-                  </p>
+                  <div className="relative h-[230px] overflow-hidden bg-[#EEE8E0] sm:h-[280px] lg:h-full lg:min-h-[220px]">
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="
+                        h-full
+                        w-full
+                        object-cover
+                        transition-transform
+                        duration-700
+                        group-hover:scale-[1.04]
+                      "
+                    />
 
-                  {/* Product Name */}
-                  <h2 className="text-xl font-medium tracking-tight text-[#292521]">
-                    {item.name}
-                  </h2>
+                    <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
 
-                  {/* Product Details */}
-                  <div className="mt-5 space-y-1.5 text-sm text-[#756b61]">
-                    <p>Quantity: {item.quantity}</p>
+                    <div className="absolute left-4 top-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/40 bg-white/75 text-[#6E5742] shadow-sm backdrop-blur-md">
+                      <FiShoppingBag size={15} />
+                    </div>
+                  </div>
 
-                    <p>{formatDate(order.date)}</p>
+                  {/* =================================================
+                      PRODUCT DETAILS
+                  ================================================= */}
 
-                    <p>
-                      Payment:{" "}
-                      <span className="text-[#4e4740]">
-                        {order.paymentMethod}
+                  <div className="flex flex-col justify-center p-5 sm:p-7 lg:p-8">
+                    <div className="mb-3 flex items-center gap-2">
+                      <span className="font-manrope text-[9px] font-bold uppercase tracking-[0.18em] text-[#A08E7D]">
+                        Order
                       </span>
-                    </p>
+
+                      <span className="h-1 w-1 rounded-full bg-[#B9A797]" />
+
+                      <span className="font-manrope text-[9px] font-bold uppercase tracking-[0.12em] text-[#A08E7D]">
+                        #{order._id.slice(0, 7)}
+                      </span>
+                    </div>
+
+                    <h2 className="font-heading text-[23px] font-semibold leading-tight tracking-[-0.025em] text-[#29231F] sm:text-[27px]">
+                      {item.name}
+                    </h2>
+
+                    <div className="mt-5 grid grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-3 sm:gap-x-8">
+                      <div>
+                        <p className="font-manrope text-[8px] font-bold uppercase tracking-[0.15em] text-[#A0958B]">
+                          Quantity
+                        </p>
+
+                        <p className="mt-1 font-manrope text-sm font-bold text-[#51473F]">
+                          {item.quantity}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="font-manrope text-[8px] font-bold uppercase tracking-[0.15em] text-[#A0958B]">
+                          Ordered
+                        </p>
+
+                        <p className="mt-1 font-manrope text-sm font-bold text-[#51473F]">
+                          {formatDate(order.date)}
+                        </p>
+                      </div>
+
+                      <div>
+                        <p className="font-manrope text-[8px] font-bold uppercase tracking-[0.15em] text-[#A0958B]">
+                          Payment
+                        </p>
+
+                        <p className="mt-1 font-manrope text-sm font-bold text-[#51473F]">
+                          {order.paymentMethod}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* =================================================
+                      PRICE + STATUS
+                  ================================================= */}
+
+                  <div className="flex flex-row items-center justify-between gap-5 border-t border-[#E7DFD7] bg-[#F9F6F2] p-5 sm:p-7 lg:flex-col lg:items-end lg:justify-center lg:border-l lg:border-t-0 lg:p-8">
+                    <div>
+                      <p className="mb-1 font-manrope text-[8px] font-bold uppercase tracking-[0.18em] text-[#A0958B]">
+                        Total
+                      </p>
+
+                      <p className="font-heading text-xl font-semibold tracking-tight text-[#302721] sm:text-2xl">
+                        {currency}
+                        {item.price.toLocaleString()}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      {/* Order Status */}
+
+                      <span
+                        className={`
+                          inline-flex
+                          items-center
+                          gap-2
+                          rounded-full
+                          border
+                          px-3
+                          py-1.5
+                          font-manrope
+                          text-[9px]
+                          font-bold
+                          uppercase
+                          tracking-[0.08em]
+                          ${getOrderStatusStyle(order.status)}
+                        `}
+                      >
+                        <span
+                          className={`
+                            h-1.5
+                            w-1.5
+                            rounded-full
+                            ${getOrderStatusDot(order.status)}
+                          `}
+                        />
+
+                        {order.status}
+                      </span>
+
+                      {/* Payment Status */}
+
+                      <span
+                        className={`
+                          inline-flex
+                          items-center
+                          gap-2
+                          rounded-full
+                          border
+                          px-3
+                          py-1.5
+                          font-manrope
+                          text-[9px]
+                          font-bold
+                          uppercase
+                          tracking-[0.08em]
+                          ${
+                            order.payment
+                              ? "border-[#CFE6D4] bg-[#EAF5EC] text-[#39734A]"
+                              : "border-[#EBD7B5] bg-[#FBF1DF] text-[#9A672E]"
+                          }
+                        `}
+                      >
+                        <span
+                          className={`
+                            h-1.5
+                            w-1.5
+                            rounded-full
+                            ${order.payment ? "bg-[#4E9A63]" : "bg-[#C58B50]"}
+                          `}
+                        />
+
+                        {order.payment ? "Paid" : "Payment Pending"}
+                      </span>
+                    </div>
                   </div>
                 </div>
-
-                {/* Price + Status */}
-                <div className="flex flex-row items-center justify-between gap-4 sm:flex-col sm:items-end sm:justify-center">
-                  {/* Price */}
-                  <p className="text-lg font-medium tracking-tight text-[#292521]">
-                    {currency}
-                    {item.price.toLocaleString()}
-                  </p>
-
-                  <div className="flex flex-wrap items-center justify-end gap-2">
-                    {/* Order Status */}
-                    <span
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${getOrderStatusStyle(
-                        order.status,
-                      )}`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${getOrderStatusDot(
-                          order.status,
-                        )}`}
-                      />
-
-                      {order.status}
-                    </span>
-
-                    {/* Payment Status */}
-                    <span
-                      className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium ${
-                        order.payment
-                          ? "border border-emerald-100 bg-emerald-50 text-emerald-700"
-                          : "border border-orange-100 bg-orange-50 text-orange-700"
-                      }`}
-                    >
-                      <span
-                        className={`h-1.5 w-1.5 rounded-full ${
-                          order.payment ? "bg-emerald-500" : "bg-orange-500"
-                        }`}
-                      />
-
-                      {order.payment ? "Paid" : "Payment Pending"}
-                    </span>
-                  </div>
-                </div>
-              </div>
+              </article>
             )),
           )}
         </div>
 
-        {/* Empty State */}
+        {/* =====================================================
+            EMPTY STATE
+        ===================================================== */}
+
         {orderData.length === 0 && (
-          <div className="py-24 text-center">
-            <p className="text-sm text-[#756b61]">
-              You haven't placed any orders yet.
+          <div className="rounded-3xl border border-[#E1D8CF] bg-[#FCFAF7] px-5 py-20 text-center shadow-[0_10px_35px_rgba(70,52,37,0.04)] sm:py-24">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EEE5DB] text-[#80634B]">
+              <FiShoppingBag size={25} />
+            </div>
+
+            <h2 className="mt-6 font-heading text-2xl font-semibold tracking-tight text-[#332A24] sm:text-3xl">
+              No orders yet
+            </h2>
+
+            <p className="mx-auto mt-2 max-w-sm font-manrope text-xs font-medium leading-5 text-[#81766C] sm:text-sm">
+              Your order history will appear here once you make your first
+              purchase.
             </p>
 
             <button
+              type="button"
               onClick={() => navigate("/collection")}
-              className="mt-6 border-b border-[#292521] pb-1 text-sm text-[#292521] transition hover:border-[#9b8f82] hover:text-[#9b8f82]"
+              className="
+                group
+                mt-7
+                inline-flex
+                items-center
+                gap-3
+                rounded-xl
+                bg-[#332A24]
+                px-5
+                py-3.5
+                font-manrope
+                text-[10px]
+                font-bold
+                uppercase
+                tracking-[0.1em]
+                text-white
+                shadow-[0_8px_20px_rgba(51,42,36,0.16)]
+                transition-all
+                duration-300
+                hover:-translate-y-0.5
+                hover:bg-[#80634B]
+              "
             >
               Continue Shopping
+              <FiArrowUpRight
+                size={15}
+                className="transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+              />
             </button>
           </div>
         )}

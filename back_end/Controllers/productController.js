@@ -14,7 +14,6 @@ const addProduct = async (req, res) => {
       bestSeller,
       stock,
     } = req.body;
-    const color = JSON.parse(req.body.color);
 
     const image1 = req.files.image1 && req.files.image1[0];
     const image2 = req.files.image2 && req.files.image2[0];
@@ -38,7 +37,7 @@ const addProduct = async (req, res) => {
       material,
       seating,
       bestSeller: bestSeller === "true" ? true : false,
-      color,
+
       image: imageUrl,
       stock: stock === "true" ? true : false,
     };

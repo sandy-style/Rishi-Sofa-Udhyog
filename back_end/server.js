@@ -8,6 +8,8 @@ import userRouter from "./routes/userRoute.js";
 import cartRoute from "./routes/cartRoute.js";
 import productRouter from "./routes/productRoute.js";
 import orderRouter from "./routes/orderRoute.js";
+import notificationRouter from "./routes/notificationRoute.js";
+import pushSubscriptionRouter from "./routes/pushSubscriptionRoute.js";
 // app config
 const app = express();
 const PORT = process.env.PORT || 4000;
@@ -28,11 +30,12 @@ app.use("/api/user", userRouter);
 app.use("/api/cart", cartRoute);
 app.use("/api/admin", productRouter);
 app.use("/api/order", orderRouter);
-
+app.use("/api/notification", notificationRouter);
+app.use("/api/push", pushSubscriptionRouter);
 app.get("/", (req, res) => {
   res.send("api working");
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`server running on http://localhost:${PORT}`);
 });
