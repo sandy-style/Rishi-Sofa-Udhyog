@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { ShopContext } from "../context/shopContext";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
-import Title from "./Title";
 import ProductCard from "./ProductCard";
 
 const LatestCollection = () => {
@@ -15,34 +14,34 @@ const LatestCollection = () => {
   const animationRef = useRef(null);
   const pausedRef = useRef(false);
 
-  // =========================
-  // GET LATEST PRODUCTS
-  // =========================
   useEffect(() => {
     if (!products || products.length === 0) {
       setLatest([]);
       return;
     }
 
-    setLatest(products.slice(0, 5));
+    const latestProducts = [...products]
+      .sort((a, b) => {
+        const dateA = new Date(a.date || 0).getTime();
+        const dateB = new Date(b.date || 0).getTime();
+
+        return dateB - dateA;
+      })
+      .slice(0, 8);
+
+    setLatest(latestProducts);
   }, [products]);
 
-  // =========================
-  // AUTO SCROLL
-  // =========================
   useEffect(() => {
     const slider = sliderRef.current;
 
     if (!slider || latest.length === 0) return;
 
     let lastTime = performance.now();
-
-    // Smaller = slower
-    const speed = 0.07;
+    const speed = 0.055;
 
     const animate = (currentTime) => {
       const delta = Math.min(currentTime - lastTime, 32);
-
       lastTime = currentTime;
 
       if (!pausedRef.current) {
@@ -51,7 +50,6 @@ const LatestCollection = () => {
         if (maxScroll > 0) {
           slider.scrollLeft += delta * speed;
 
-          // Reached the end
           if (slider.scrollLeft >= maxScroll - 1) {
             slider.scrollLeft = 0;
           }
@@ -70,9 +68,6 @@ const LatestCollection = () => {
     };
   }, [latest]);
 
-  // =========================
-  // PAUSE / RESUME
-  // =========================
   const handleMouseEnter = () => {
     pausedRef.current = true;
   };
@@ -86,12 +81,11 @@ const LatestCollection = () => {
   };
 
   const handleTouchEnd = () => {
-    pausedRef.current = false;
+    setTimeout(() => {
+      pausedRef.current = false;
+    }, 500);
   };
 
-  // =========================
-  // GET CARD WIDTH
-  // =========================
   const getCardWidth = () => {
     const slider = sliderRef.current;
 
@@ -108,9 +102,6 @@ const LatestCollection = () => {
     return card.offsetWidth + gap;
   };
 
-  // =========================
-  // PREVIOUS
-  // =========================
   const handlePrevious = () => {
     const slider = sliderRef.current;
 
@@ -132,9 +123,6 @@ const LatestCollection = () => {
     }, 700);
   };
 
-  // =========================
-  // NEXT
-  // =========================
   const handleNext = () => {
     const slider = sliderRef.current;
 
@@ -156,16 +144,13 @@ const LatestCollection = () => {
     }, 700);
   };
 
-  // =========================
-  // PRODUCT CARD
-  // =========================
   const renderProduct = (item, index) => (
     <div
       key={item._id || index}
       data-product-card
       className="
         shrink-0
-        min-w-[82%]
+        min-w-[78%]
 
         sm:min-w-[47%]
 
@@ -180,13 +165,14 @@ const LatestCollection = () => {
         name={item.name}
         price={item.price}
         description={item.description}
+        offer={item.offer}
+        stock={item.stock}
+        bestSeller={item.bestSeller}
+        category={item.category}
       />
     </div>
   );
 
-  // =========================
-  // VIEW MORE
-  // =========================
   const renderViewMore = () => (
     <button
       type="button"
@@ -195,7 +181,7 @@ const LatestCollection = () => {
         group
         flex
         shrink-0
-        min-w-[82%]
+        min-w-[78%]
         items-center
         justify-center
         rounded-2xl
@@ -262,29 +248,23 @@ const LatestCollection = () => {
         <p
           className="
             mt-2
-            max-w-[190px]
+            max-w-[200px]
             text-xs
             leading-5
             text-[#806F62]
           "
         >
-          Explore our latest sofa collection
+          Explore our newest furniture arrivals
         </p>
       </div>
     </button>
   );
 
-  // =========================
-  // NO PRODUCTS
-  // =========================
   if (!latest.length) return null;
 
   return (
     <section className="my-12 sm:my-16 lg:my-20">
       <div className="mx-auto max-w-[1550px]">
-        {/* =========================
-            HEADER
-        ========================= */}
         <div
           className="
             mb-7
@@ -304,33 +284,31 @@ const LatestCollection = () => {
             xl:px-10
           "
         >
-          {/* TITLE */}
           <div className="text-center lg:text-left">
-            {/* Eyebrow */}
             <div
               className="
-      mb-3
-      flex
-      items-center
-      justify-center
-      gap-3
+                mb-3
+                flex
+                items-center
+                justify-center
+                gap-3
 
-      lg:justify-start
-    "
+                lg:justify-start
+              "
             >
               <span className="h-px w-10 bg-[#9A795B]" />
 
               <span
                 className="
-        font-manrope
-        text-[10px]
-        font-medium
-        uppercase
-        tracking-[0.28em]
-        text-[#8A6B50]
+                  font-manrope
+                  text-[10px]
+                  font-semibold
+                  uppercase
+                  tracking-[0.28em]
+                  text-[#8A6B50]
 
-        sm:text-[11px]
-      "
+                  sm:text-[11px]
+                "
               >
                 Latest Collection
               </span>
@@ -338,22 +316,21 @@ const LatestCollection = () => {
               <span className="h-px w-10 bg-[#C8A77F]" />
             </div>
 
-            {/* Main Title */}
             <h2
               className="
-      font-serif
-      text-[30px]
-      font-medium
-      leading-[1.05]
-      tracking-[-0.035em]
-      text-[#2F241D]
+                font-serif
+                text-[30px]
+                font-medium
+                leading-[1.05]
+                tracking-[-0.035em]
+                text-[#2F241D]
 
-      sm:text-[38px]
+                sm:text-[38px]
 
-      lg:text-[44px]
+                lg:text-[44px]
 
-      xl:text-[48px]
-    "
+                xl:text-[48px]
+              "
             >
               Freshly Crafted,
               <br className="hidden sm:block" />
@@ -376,15 +353,12 @@ const LatestCollection = () => {
                 lg:text-base
               "
             >
-              Experience our newest sofa designs, combining premium quality,
-              elegant craftsmanship, and unmatched comfort to elevate every
-              living space with style.
+              Discover our newest furniture pieces, combining premium materials,
+              elegant craftsmanship, and thoughtful design to bring comfort and
+              character to every space.
             </p>
           </div>
 
-          {/* =========================
-              ARROWS
-          ========================= */}
           <div className="hidden items-center gap-3 lg:flex">
             <button
               type="button"
@@ -448,9 +422,6 @@ const LatestCollection = () => {
           </div>
         </div>
 
-        {/* =========================
-            ONE ROW ONLY
-        ========================= */}
         <div
           ref={sliderRef}
           onMouseEnter={handleMouseEnter}
@@ -475,16 +446,11 @@ const LatestCollection = () => {
             xl:px-10
           "
         >
-          {/* PRODUCTS */}
           {latest.map((item, index) => renderProduct(item, index))}
 
-          {/* VIEW MORE */}
           {renderViewMore()}
         </div>
 
-        {/* =========================
-            MOBILE SWIPE TEXT
-        ========================= */}
         <div
           className="
             mt-2
@@ -493,6 +459,7 @@ const LatestCollection = () => {
             justify-center
             gap-2
             text-[10px]
+            font-medium
             uppercase
             tracking-[0.18em]
             text-[#9A8068]
@@ -508,9 +475,6 @@ const LatestCollection = () => {
         </div>
       </div>
 
-      {/* =========================
-          HIDE SCROLLBAR
-      ========================= */}
       <style>
         {`
           .latest-collection-slider::-webkit-scrollbar {
@@ -521,6 +485,7 @@ const LatestCollection = () => {
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-behavior: auto;
+            -webkit-overflow-scrolling: touch;
           }
         `}
       </style>

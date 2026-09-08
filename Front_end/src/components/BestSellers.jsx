@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import { ShopContext } from "../context/shopContext";
 import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
-import Title from "./Title";
 import ProductCard from "./ProductCard";
 
 const BestSellers = () => {
@@ -16,20 +15,26 @@ const BestSellers = () => {
   const pausedRef = useRef(false);
 
   useEffect(() => {
-    const bestSofa = products.filter((item) => item.bestSeller);
-    setBestSeller(bestSofa.slice(0, 5));
+    const bestProducts = products
+      .filter(
+        (item) =>
+          item.bestSeller === true ||
+          item.bestSeller === "true" ||
+          item.bestSeller === 1 ||
+          item.bestSeller === "1",
+      )
+      .slice(0, 8);
+
+    setBestSeller(bestProducts);
   }, [products]);
 
-  // =========================
-  // AUTO SCROLL
-  // =========================
   useEffect(() => {
     const slider = sliderRef.current;
 
     if (!slider || bestSeller.length === 0) return;
 
     let lastTime = performance.now();
-    const speed = 0.07;
+    const speed = 0.055;
 
     const animate = (currentTime) => {
       const delta = Math.min(currentTime - lastTime, 32);
@@ -41,7 +46,6 @@ const BestSellers = () => {
         if (maxScroll > 0) {
           slider.scrollLeft += delta * speed;
 
-          // Reached the end → go back to the beginning
           if (slider.scrollLeft >= maxScroll - 1) {
             slider.scrollLeft = 0;
           }
@@ -60,9 +64,6 @@ const BestSellers = () => {
     };
   }, [bestSeller]);
 
-  // =========================
-  // PAUSE / RESUME
-  // =========================
   const handleMouseEnter = () => {
     pausedRef.current = true;
   };
@@ -76,12 +77,11 @@ const BestSellers = () => {
   };
 
   const handleTouchEnd = () => {
-    pausedRef.current = false;
+    setTimeout(() => {
+      pausedRef.current = false;
+    }, 500);
   };
 
-  // =========================
-  // PREVIOUS
-  // =========================
   const handlePrevious = () => {
     const slider = sliderRef.current;
 
@@ -103,9 +103,6 @@ const BestSellers = () => {
     }, 700);
   };
 
-  // =========================
-  // NEXT
-  // =========================
   const handleNext = () => {
     const slider = sliderRef.current;
 
@@ -127,18 +124,18 @@ const BestSellers = () => {
     }, 700);
   };
 
-  // =========================
-  // PRODUCT CARD
-  // =========================
   const renderProduct = (item, index) => (
     <div
       key={item._id || index}
       data-card
       className="
         shrink-0
-        min-w-[82%]
+        min-w-[78%]
+
         sm:min-w-[47%]
+
         md:min-w-[31.5%]
+
         lg:min-w-[calc(25%-18px)]
       "
     >
@@ -148,13 +145,14 @@ const BestSellers = () => {
         name={item.name}
         price={item.price}
         description={item.description}
+        offer={item.offer}
+        stock={item.stock}
+        bestSeller={item.bestSeller}
+        category={item.category}
       />
     </div>
   );
 
-  // =========================
-  // VIEW MORE
-  // =========================
   const renderViewMore = () => (
     <button
       type="button"
@@ -164,7 +162,7 @@ const BestSellers = () => {
         group
         flex
         shrink-0
-        min-w-[82%]
+        min-w-[78%]
         items-center
         justify-center
         rounded-2xl
@@ -221,7 +219,7 @@ const BestSellers = () => {
         </h3>
 
         <p className="mt-2 max-w-[190px] text-xs leading-5 text-[#806F62]">
-          Explore our best-selling sofa collection
+          Explore all our best-selling furniture
         </p>
       </div>
     </button>
@@ -232,7 +230,6 @@ const BestSellers = () => {
   return (
     <section className="my-12 sm:my-16 lg:my-20">
       <div className="mx-auto max-w-[1550px]">
-        {/* HEADER */}
         <div
           className="
             mb-7
@@ -254,31 +251,30 @@ const BestSellers = () => {
         >
           <div className="text-center lg:text-left">
             <div>
-              {/* Eyebrow */}
               <div
                 className="
-      mb-3
-      flex
-      items-center
-      justify-center
-      gap-3
+                  mb-3
+                  flex
+                  items-center
+                  justify-center
+                  gap-3
 
-      lg:justify-start
-    "
+                  lg:justify-start
+                "
               >
                 <span className="h-px w-10 bg-[#9A795B]" />
 
                 <span
                   className="
-        font-manrope
-        text-[10px]
-        font-medium
-        uppercase
-        tracking-[0.28em]
-        text-[#8A6B50]
+                    font-manrope
+                    text-[10px]
+                    font-semibold
+                    uppercase
+                    tracking-[0.28em]
+                    text-[#8A6B50]
 
-        sm:text-[11px]
-      "
+                    sm:text-[11px]
+                  "
                 >
                   Best Seller
                 </span>
@@ -286,22 +282,21 @@ const BestSellers = () => {
                 <span className="h-px w-10 bg-[#C8A77F]" />
               </div>
 
-              {/* Main Title */}
               <h2
                 className="
-      font-serif
-      text-[30px]
-      font-medium
-      leading-[1.05]
-      tracking-[-0.035em]
-      text-[#2F241D]
+                  font-serif
+                  text-[30px]
+                  font-medium
+                  leading-[1.05]
+                  tracking-[-0.035em]
+                  text-[#2F241D]
 
-      sm:text-[38px]
+                  sm:text-[38px]
 
-      lg:text-[44px]
+                  lg:text-[44px]
 
-      xl:text-[48px]
-    "
+                  xl:text-[48px]
+                "
               >
                 Loved by Homes,
                 <br className="hidden sm:block" />
@@ -325,13 +320,12 @@ const BestSellers = () => {
                 lg:text-base
               "
             >
-              Discover our most-loved sofas, crafted with premium materials,
-              timeless elegance, and exceptional comfort to elevate every living
-              space beautifully.
+              Discover our most-loved furniture, crafted with premium materials,
+              timeless design, and exceptional comfort to elevate every space
+              beautifully.
             </p>
           </div>
 
-          {/* ARROWS */}
           <div className="hidden items-center gap-3 lg:flex">
             <button
               type="button"
@@ -395,7 +389,6 @@ const BestSellers = () => {
           </div>
         </div>
 
-        {/* ONE ROW ONLY */}
         <div
           ref={sliderRef}
           onMouseEnter={handleMouseEnter}
@@ -425,7 +418,6 @@ const BestSellers = () => {
           {renderViewMore()}
         </div>
 
-        {/* MOBILE SWIPE TEXT */}
         <div
           className="
             mt-2
@@ -434,9 +426,11 @@ const BestSellers = () => {
             justify-center
             gap-2
             text-[10px]
+            font-medium
             uppercase
             tracking-[0.18em]
             text-[#9A8068]
+
             lg:hidden
           "
         >
@@ -446,7 +440,6 @@ const BestSellers = () => {
         </div>
       </div>
 
-      {/* HIDE SCROLLBAR */}
       <style>
         {`
           .best-seller-slider::-webkit-scrollbar {
@@ -457,6 +450,7 @@ const BestSellers = () => {
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-behavior: auto;
+            -webkit-overflow-scrolling: touch;
           }
         `}
       </style>

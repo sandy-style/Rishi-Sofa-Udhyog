@@ -1,144 +1,768 @@
-import React, { useContext, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useContext, useEffect, useMemo, useState } from "react";
+import { useParams, Link } from "react-router-dom";
 import { ShopContext } from "../context/shopContext";
-import Title from "../components/Title";
-import ProductCard from "../components/ProductCard";
 import RelatedProducts from "../components/RelatedProducts";
-import { FiShoppingCart } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import Review from "../components/Review";
+
+import {
+  FiArrowLeft,
+  FiArrowRight,
+  FiCheck,
+  FiMinus,
+  FiPlus,
+  FiShoppingCart,
+  FiTag,
+} from "react-icons/fi";
+
 const Product = ({ token, setShowLogin }) => {
   const { productId } = useParams();
+
   const { products, currency, addToCart, getProductsFromCart } =
     useContext(ShopContext);
-  const [productData, setProductData] = useState(false);
-  const [relatedProducts, setRelatedProducts] = useState([]);
+
+  const [productData, setProductData] = useState(null);
   const [image, setImage] = useState("");
-  const fetchProductData = async () => {
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [quantity, setQuantity] = useState(1);
+
+  // =====================================================
+  // GET PRODUCT
+  // =====================================================
+
+  useEffect(() => {
+    if (!products?.length) return;
+
     const product = products.find((item) => item._id === productId);
+
     if (product) {
       setProductData(product);
-      setImage(product.image[0]);
+      setImage(product.image?.[0] || "");
+      setActiveImageIndex(0);
+    }
+  }, [products, productId]);
+
+  // =====================================================
+  // GET CART
+  // =====================================================
+
+  useEffect(() => {
+    getProductsFromCart();
+  }, [productId]);
+
+  // =====================================================
+  // STOCK
+  // =====================================================
+
+  const isInStock =
+    productData?.stock === true ||
+    productData?.stock === "true" ||
+    productData?.stock === 1 ||
+    productData?.stock === "1";
+
+  // =====================================================
+  // BEST SELLER
+  // =====================================================
+
+  const isBestSeller =
+    productData?.bestSeller === true ||
+    productData?.bestSeller === "true" ||
+    productData?.bestSeller === 1 ||
+    productData?.bestSeller === "1";
+
+  // =====================================================
+  // OFFER
+  // =====================================================
+
+  const offerIsActive =
+    productData?.offer?.isActive === true ||
+    productData?.offer?.isActive === "true" ||
+    productData?.offer?.isActive === 1 ||
+    productData?.offer?.isActive === "1";
+
+  const originalPrice = Math.max(0, Number(productData?.price) || 0);
+
+  const discountValue = Math.max(
+    0,
+    Number(productData?.offer?.discountValue) || 0,
+  );
+
+  const discountType = productData?.offer?.discountType;
+
+  const isOfferActive =
+    offerIsActive &&
+    discountValue > 0 &&
+    (discountType === "percentage" || discountType === "flat");
+
+  let finalPrice = originalPrice;
+  let discountAmount = 0;
+  let discountPercentage = 0;
+
+  if (isOfferActive) {
+    if (discountType === "percentage") {
+      discountPercentage = Math.min(100, discountValue);
+
+      discountAmount = (originalPrice * discountPercentage) / 100;
+
+      finalPrice = originalPrice - discountAmount;
+    }
+
+    if (discountType === "flat") {
+      discountAmount = Math.min(originalPrice, discountValue);
+
+      finalPrice = originalPrice - discountAmount;
+
+      discountPercentage =
+        originalPrice > 0
+          ? Math.round((discountAmount / originalPrice) * 100)
+          : 0;
+    }
+
+    finalPrice = Math.max(0, finalPrice);
+  }
+
+  // =====================================================
+  // CATEGORY
+  // =====================================================
+
+  const formattedCategory = productData?.category
+    ? String(productData.category)
+        .replace(/-/g, " ")
+        .replace(/\b\w/g, (letter) => letter.toUpperCase())
+    : "";
+
+  // =====================================================
+  // REVIEWS
+  // =====================================================
+
+  const reviews = productData?.reviews || [];
+
+  const reviewCount = reviews.length;
+
+  const averageRating =
+    reviewCount > 0
+      ? (
+          reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+          reviewCount
+        ).toFixed(1)
+      : "0.0";
+
+  // =====================================================
+  // PRODUCT DETAILS
+  // =====================================================
+
+  const productDetails = useMemo(() => {
+    if (!productData) return [];
+
+    const details = [];
+
+    /*
+      Your backend category is:
+      "Matteress"
+
+      So support both Matteress and mattress
+      just in case old products use another value.
+    */
+
+    const category = String(productData.category || "").toLowerCase();
+
+    if (category === "matteress" || category === "mattress") {
+      if (productData.mattressType) {
+        details.push(["Mattress Type", productData.mattressType]);
+      }
+
+      if (productData.size) {
+        details.push(["Size", productData.size]);
+      }
+
+      if (productData.thickness) {
+        details.push(["Thickness", productData.thickness]);
+      }
+
+      if (productData.firmness) {
+        details.push(["Firmness", productData.firmness]);
+      }
+
+      if (productData.material) {
+        details.push(["Material", productData.material]);
+      }
+
+      if (productData.color) {
+        details.push(["Color", productData.color]);
+      }
+
+      if (productData.style) {
+        details.push(["Style", productData.style]);
+      }
+
+      return details;
+    }
+
+    if (productData.seating) {
+      details.push(["Seating", productData.seating]);
+    }
+
+    if (productData.material) {
+      details.push(["Material", productData.material]);
+    }
+
+    if (productData.color) {
+      details.push(["Color", productData.color]);
+    }
+
+    if (productData.style) {
+      details.push(["Style", productData.style]);
+    }
+
+    if (productData.size) {
+      details.push(["Size", productData.size]);
+    }
+
+    if (productData.height) {
+      details.push(["Height", productData.height]);
+    }
+
+    if (productData.width) {
+      details.push(["Width", productData.width]);
+    }
+
+    if (productData.length) {
+      details.push(["Length", productData.length]);
+    }
+
+    if (productData.weight) {
+      details.push(["Weight", productData.weight]);
+    }
+
+    return details;
+  }, [productData]);
+
+  // =====================================================
+  // ADD TO CART
+  // =====================================================
+
+  const handleAddToCart = () => {
+    if (!isInStock) return;
+
+    if (!token) {
+      setShowLogin(true);
+      return;
+    }
+
+    for (let i = 0; i < quantity; i++) {
+      addToCart(productId, token);
     }
   };
 
-  useEffect(() => {
-    fetchProductData();
-    getProductsFromCart();
-  }, [products, productId]);
+  // =====================================================
+  // IMAGE NAVIGATION
+  // =====================================================
 
-  return productData ? (
-    <div className=" border-t-2 pt-10 transition-opacity ease-in duration-500 opacity-100">
-      <div className="flex gap-12 sm:flex-row flex-col">
-        {/* products images */}
-        <div className="flex-1 flex flex-col-reverse gap-3 sm:flex-row">
-          <div className="flex sm:flex-col  flex-row overflow-x-auto justify-normal sm:justify-normal sm:overflow-y-scroll sm:w-[18.7%] w-full">
-            {productData.image.map((item, index) => (
-              <img
-                onClick={() => setImage(item)}
-                src={item}
-                key={index}
-                className="w-[24%] sm:w-full sm:mb-3 flex-shrink-0 cursor-pointer shadow-lg bg-[#F6F2EC]  border   border-[#f4c179]"
-                alt=""
-              />
-            ))}
-          </div>
-          <div className="w-full sm:w-[80%]">
-            <div className=" bg-[#F6F2EC]  borderborder-[#E6DED3] rounded-lg p-8  flex items-center justify-center min-h-[520px]">
-              <img
-                className="w-full max-w-lg object-contain transition duration-300 border border-[#f4c179] hover:scale-[1.02]"
-                src={image}
-                alt=""
-              />
-            </div>
+  const handlePreviousImage = () => {
+    if (!productData?.image?.length) return;
+
+    const total = productData.image.length;
+
+    const nextIndex = activeImageIndex === 0 ? total - 1 : activeImageIndex - 1;
+
+    setActiveImageIndex(nextIndex);
+    setImage(productData.image[nextIndex]);
+  };
+
+  const handleNextImage = () => {
+    if (!productData?.image?.length) return;
+
+    const total = productData.image.length;
+
+    const nextIndex = activeImageIndex === total - 1 ? 0 : activeImageIndex + 1;
+
+    setActiveImageIndex(nextIndex);
+    setImage(productData.image[nextIndex]);
+  };
+
+  // =====================================================
+  // QUANTITY
+  // =====================================================
+
+  const handleQuantityChange = (type) => {
+    if (type === "increase") {
+      setQuantity((prev) => Math.min(prev + 1, 10));
+    } else {
+      setQuantity((prev) => Math.max(prev - 1, 1));
+    }
+  };
+
+  // =====================================================
+  // LOADING
+  // =====================================================
+
+  if (!productData) {
+    return (
+      <div className="min-h-[70vh] animate-pulse px-4 py-10 sm:px-8">
+        <div className="mx-auto grid max-w-[1450px] gap-8 lg:grid-cols-2">
+          <div className="aspect-square rounded-[24px] bg-[#F1ECE6]" />
+
+          <div className="space-y-5">
+            <div className="h-4 w-32 rounded-full bg-[#F1ECE6]" />
+
+            <div className="h-12 w-3/4 rounded-xl bg-[#F1ECE6]" />
+
+            <div className="h-6 w-40 rounded-full bg-[#F1ECE6]" />
+
+            <div className="h-10 w-48 rounded-xl bg-[#F1ECE6]" />
+
+            <div className="h-24 rounded-xl bg-[#F1ECE6]" />
+
+            <div className="h-16 rounded-xl bg-[#F1ECE6]" />
+
+            <div className="h-14 rounded-xl bg-[#F1ECE6]" />
           </div>
         </div>
-        <div className="flex-1">
-          <h1 className="text-2xl font-medium font-heading text-[#231F1C]">
-            {productData.name}
-          </h1>
-          <div className="flex items-center gap-2 mt-3">
-            <span className="text-[#D69C3D] tracking-wide text-lg">★★★★★</span>
-            <p className="text-sm text-gray-500">(126 Reviews)</p>
-          </div>
-          <p className="font-medium font-manrope text-2xl mt-4">
-            {currency}
-            {productData.price}
-          </p>
-          <p className="text-xs md:text-base text-[#6D655D] font-manrope mt-5  capitalize">
-            {productData.description}
-          </p>{" "}
-          <div className="my-10">
-            <h2 className="font-heading text-3xl text-[#231F1C] mb-6">
-              Product Details
-            </h2>
+      </div>
+    );
+  }
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="bg-[#F8F4EE] border border-[#E8DED2] rounded-xl p-5 shadow-sm hover:shadow-md transition">
-                <p className="text-xs uppercase tracking-[0.2em] text-[#9A8F84]">
-                  Seating
-                </p>
-                <p className="mt-2 text-lg font-semibold text-[#231F1C]">
-                  {productData.seating}
-                </p>
+  // =====================================================
+  // MAIN
+  // =====================================================
+
+  return (
+    <main className="border-t border-[#E9DED2] bg-[#FCFAF7]">
+      <div className="mx-auto max-w-[1550px] px-4 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-8 lg:px-8 xl:px-10">
+        {/* =================================================
+            BREADCRUMB
+        ================================================= */}
+
+        <div className="font-beautify mb-6 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-[#9A8878] sm:mb-8 sm:text-[11px]">
+          <Link to="/" className="transition-colors hover:text-[#634936]">
+            Home
+          </Link>
+
+          <span>/</span>
+
+          <Link
+            to="/collection"
+            className="transition-colors hover:text-[#634936]"
+          >
+            Collection
+          </Link>
+
+          <span>/</span>
+
+          <span className="truncate text-[#634936]">{productData.name}</span>
+        </div>
+
+        {/* =================================================
+            PRODUCT AREA
+        ================================================= */}
+
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] lg:gap-12 xl:grid-cols-[minmax(0,1.08fr)_minmax(500px,0.92fr)] xl:gap-16">
+          {/* =================================================
+              LEFT - PRODUCT IMAGES
+          ================================================= */}
+
+          <section className="min-w-0">
+            <div className="flex flex-col gap-3 sm:flex-row">
+              {/* THUMBNAILS */}
+
+              <div className="order-2 flex w-full gap-2 overflow-x-auto pb-1 sm:order-1 sm:w-[92px] sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden sm:pb-0 lg:w-[100px]">
+                {productData.image?.map((item, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => {
+                      setImage(item);
+                      setActiveImageIndex(index);
+                    }}
+                    className={`group relative aspect-square w-[72px] shrink-0 overflow-hidden rounded-[12px] border bg-[#F5F0EA] transition-all duration-300 sm:w-full ${
+                      activeImageIndex === index
+                        ? "border-[#8C684B] shadow-[0_8px_20px_rgba(76,52,36,0.12)]"
+                        : "border-[#E5D9CD] hover:border-[#BDA58F]"
+                    }`}
+                  >
+                    <img
+                      src={item}
+                      alt={`${productData.name} ${index + 1}`}
+                      loading="lazy"
+                      className="h-full w-full object-contain p-2 transition-transform duration-300 group-hover:scale-105"
+                    />
+
+                    {activeImageIndex === index && (
+                      <span className="absolute inset-x-2 bottom-1 h-[2px] rounded-full bg-[#8C684B] sm:inset-x-3" />
+                    )}
+                  </button>
+                ))}
               </div>
 
-              <div className="bg-[#F8F4EE] border border-[#E8DED2] rounded-xl p-5 shadow-sm hover:shadow-md transition capitalize">
-                <p className="text-xs uppercase tracking-[0.2em] text-[#9A8F84] ">
-                  Material
-                </p>
-                <p className="mt-2 text-lg font-semibold text-[#231F1C]">
-                  {productData.material}
-                </p>
+              {/* MAIN IMAGE */}
+
+              <div className="order-1 min-w-0 flex-1 sm:order-2">
+                <div className="relative overflow-hidden rounded-[20px] border border-[#E6DCD1] bg-[#F3EEE8] shadow-[0_18px_50px_rgba(73,51,35,0.07)] sm:rounded-[24px] lg:rounded-[28px]">
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.9),transparent_65%)]" />
+
+                  <div className="relative flex min-h-[340px] items-center justify-center p-5 sm:min-h-[500px] sm:p-8 lg:min-h-[600px] xl:min-h-[650px]">
+                    <img
+                      src={image}
+                      alt={productData.name}
+                      className="h-full max-h-[560px] w-full object-contain drop-shadow-[0_24px_28px_rgba(48,35,26,0.13)] transition-transform duration-500 hover:scale-[1.025]"
+                    />
+
+                    {/* IMAGE ARROWS */}
+
+                    {productData.image?.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePreviousImage}
+                          aria-label="Previous image"
+                          className="absolute left-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#634936] shadow-md backdrop-blur-sm transition-all hover:scale-105 hover:bg-[#634936] hover:text-white sm:left-5 sm:h-11 sm:w-11"
+                        >
+                          <FiArrowLeft className="text-sm sm:text-base" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={handleNextImage}
+                          aria-label="Next image"
+                          className="absolute right-3 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/70 bg-white/90 text-[#634936] shadow-md backdrop-blur-sm transition-all hover:scale-105 hover:bg-[#634936] hover:text-white sm:right-5 sm:h-11 sm:w-11"
+                        >
+                          <FiArrowRight className="text-sm sm:text-base" />
+                        </button>
+                      </>
+                    )}
+
+                    {/* =================================================
+                        OFFER BADGE
+                        SMALLER ON MOBILE
+                    ================================================= */}
+
+                    {isOfferActive && (
+                      <div className="absolute left-2 top-2 sm:left-5 sm:top-5">
+                        <div className="flex items-center gap-1 rounded-full bg-[#B91C1C] px-2 py-1 text-white shadow-[0_6px_15px_rgba(127,29,29,0.22)] sm:gap-1.5 sm:px-4 sm:py-2">
+                          <FiTag className="text-[8px] sm:text-xs" />
+
+                          <span className="font-beautify text-[7px] font-bold uppercase tracking-[0.08em] sm:text-[10px] sm:tracking-[0.12em]">
+                            {discountPercentage}% Off
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* OUT OF STOCK */}
+
+                    {!isInStock && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-[#30231B]/20 backdrop-blur-[2px]">
+                        <span className="font-beautify rounded-full bg-white px-4 py-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#634936] shadow-xl sm:px-5 sm:py-2.5 sm:text-[10px]">
+                          Out of Stock
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* IMAGE DOTS */}
+
+                  <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 backdrop-blur-md sm:bottom-5">
+                    {productData.image?.map((_, index) => (
+                      <button
+                        key={index}
+                        type="button"
+                        onClick={() => {
+                          setImage(productData.image[index]);
+
+                          setActiveImageIndex(index);
+                        }}
+                        aria-label={`View image ${index + 1}`}
+                        className={`h-1.5 rounded-full transition-all duration-300 ${
+                          activeImageIndex === index
+                            ? "w-5 bg-[#634936]"
+                            : "w-1.5 bg-[#C7B6A5]"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
-            <div className="mt-10">
-              {" "}
-              <div>
-                <button
-                  onClick={() =>
-                    token ? addToCart(productId, token) : setShowLogin(true)
-                  }
-                  className="group relative overflow-hidden  border border-[#C99658] bg-[#C99658] px-10 py-4 font-manrope text-lg font-semibold text-white shadow-sm transition-all duration-300 hover:shadow-xl"
-                >
-                  <span className="relative z-10 flex items-center gap-3 transition-colors duration-300 ">
-                    Add to Cart
-                    <FiShoppingCart className="h-5 w-5 -translate-x-2 transition-all duration-300 group-hover:translate-x-0 " />
+          </section>
+
+          {/* =================================================
+              RIGHT - PRODUCT INFORMATION
+          ================================================= */}
+
+          <section className="min-w-0 lg:pt-2">
+            {/* CATEGORY + BEST SELLER */}
+
+            <div className="flex flex-wrap items-center gap-2">
+              {formattedCategory && (
+                <span className="font-beautify rounded-full bg-[#EEE5DB] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.14em] text-[#80634B] sm:px-4 sm:text-[10px]">
+                  {formattedCategory}
+                </span>
+              )}
+
+              {isBestSeller && (
+                <span className="font-beautify inline-flex items-center gap-1.5 rounded-full bg-[#634936] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.12em] text-white sm:px-4 sm:text-[10px] sm:tracking-[0.14em]">
+                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                  Best Seller
+                </span>
+              )}
+            </div>
+
+            {/* OFFER TITLE */}
+
+            {isOfferActive && productData.offer?.offerTitle && (
+              <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-[10px] border border-[#E7C8C3] bg-[#FFF6F4] px-3 py-2 sm:px-4">
+                <FiTag className="shrink-0 text-sm text-[#B91C1C]" />
+
+                <span className="font-beautify truncate text-[9px] font-bold uppercase tracking-[0.1em] text-[#9B3029] sm:text-[11px] sm:tracking-[0.12em]">
+                  {productData.offer.offerTitle}
+                </span>
+              </div>
+            )}
+
+            {/* PRODUCT NAME */}
+
+            <h1 className="mt-4 max-w-[760px] font-serif text-[34px] font-medium leading-[1.03] tracking-[-0.045em] text-[#30231B] sm:mt-5 sm:text-[44px] md:text-[50px] lg:text-[54px] xl:text-[60px]">
+              {productData.name}
+            </h1>
+
+            {/* =================================================
+                RATING
+            ================================================= */}
+
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#E7DDD3] pb-5">
+              <div className="flex items-center gap-1 text-[#C38B43]">
+                <span className="text-base tracking-[0.08em] sm:text-lg">
+                  ★★★★★
+                </span>
+              </div>
+
+              <span className="font-beautify text-xs font-semibold text-[#634936] sm:text-sm">
+                {reviewCount > 0 ? averageRating : "No ratings"}
+              </span>
+
+              <span className="h-1 w-1 rounded-full bg-[#C8B7A5]" />
+
+              <a
+                href="#reviews"
+                className="font-beautify text-xs font-medium text-[#806F62] underline-offset-4 transition hover:text-[#634936] hover:underline sm:text-sm"
+              >
+                {reviewCount > 0
+                  ? `${reviewCount} Customer ${
+                      reviewCount === 1 ? "Review" : "Reviews"
+                    }`
+                  : "Be the first to review"}
+              </a>
+            </div>
+
+            {/* =================================================
+                PRICE
+            ================================================= */}
+
+            <div className="mt-6 border-b border-[#E7DDD3] pb-6 sm:mt-7 sm:pb-7">
+              <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.2em] text-[#A18C79] sm:text-[10px]">
+                {isOfferActive ? "Special Price" : "Price"}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
+                {/* DISCOUNTED PRICE */}
+
+                <span className="font-manrope text-[32px] font-bold leading-none tracking-[-0.045em] text-[#63432F] sm:text-[38px] lg:text-[42px]">
+                  {currency}
+
+                  {Math.round(finalPrice).toLocaleString("en-IN")}
+                </span>
+
+                {/* ORIGINAL PRICE */}
+
+                {isOfferActive && (
+                  <span className="font-beautify text-sm font-medium text-[#A18C79] line-through sm:text-base">
+                    {currency}
+
+                    {Math.round(originalPrice).toLocaleString("en-IN")}
                   </span>
-                </button>
+                )}
               </div>
+
+              {/* SAVINGS */}
+
+              {isOfferActive && (
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                  <span className="font-beautify inline-flex items-center gap-1.5 rounded-full bg-[#EFE6DC] px-3 py-1.5 text-[9px] font-bold uppercase tracking-[0.1em] text-[#634936] sm:text-[10px]">
+                    <FiTag className="text-[10px]" />
+                    Save {currency}
+                    {Math.round(discountAmount).toLocaleString("en-IN")}
+                  </span>
+
+                  <span className="font-beautify text-[10px] font-semibold text-[#718466] sm:text-xs">
+                    You save {discountPercentage}%
+                  </span>
+                </div>
+              )}
             </div>
-          </div>
+
+            {/* =================================================
+                DESCRIPTION
+            ================================================= */}
+
+            {productData.description && (
+              <div className="mt-6 sm:mt-7">
+                <p className="font-beautify text-xs leading-6 text-[#71665D] sm:text-sm sm:leading-6">
+                  {productData.description}
+                </p>
+              </div>
+            )}
+
+            {/* =================================================
+                PRODUCT DETAILS
+            ================================================= */}
+
+            <div className="mt-7 sm:mt-8">
+              <div className="mb-4">
+                <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.2em] text-[#A18C79] sm:text-[10px]">
+                  Product Information
+                </p>
+
+                <h2 className="mt-1 font-serif text-[25px] font-medium tracking-[-0.025em] text-[#30231B] sm:text-[30px]">
+                  Details
+                </h2>
+              </div>
+
+              {productDetails.length > 0 ? (
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                  {productDetails.map(([label, value], index) => (
+                    <div
+                      key={`${label}-${index}`}
+                      className="rounded-[14px] border border-[#E7DDD3] bg-[#FBF8F4] p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-[#D4C1AF] hover:shadow-[0_10px_25px_rgba(73,51,35,0.06)] sm:rounded-[16px] sm:p-5"
+                    >
+                      <p className="font-beautify text-[8px] font-bold uppercase tracking-[0.18em] text-[#A18C79] sm:text-[9px]">
+                        {label}
+                      </p>
+
+                      <p className="mt-2 break-words font-serif text-sm font-medium capitalize leading-5 text-[#30231B] sm:text-base">
+                        {String(value)}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-[16px] border border-[#E7DDD3] bg-[#FBF8F4] p-5">
+                  <p className="font-beautify text-xs text-[#806F62]">
+                    Product specifications will be available soon.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* =================================================
+                QUANTITY + CART
+            ================================================= */}
+
+            <div className="mt-7 border-t border-[#E7DDD3] pt-6 sm:mt-8 sm:pt-7">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.18em] text-[#A18C79] sm:text-[10px]">
+                    Quantity
+                  </p>
+
+                  <div className="mt-2 inline-flex items-center rounded-full border border-[#DCCFC1] bg-[#FBF8F4]">
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange("decrease")}
+                      disabled={quantity <= 1}
+                      className="flex h-10 w-10 items-center justify-center text-[#634936] transition hover:bg-[#F0E7DD] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Decrease quantity"
+                    >
+                      <FiMinus className="text-sm" />
+                    </button>
+
+                    <span className="font-manrope flex h-10 min-w-10 items-center justify-center border-x border-[#E1D6CB] px-2 text-sm font-bold text-[#30231B]">
+                      {quantity}
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={() => handleQuantityChange("increase")}
+                      disabled={quantity >= 10}
+                      className="flex h-10 w-10 items-center justify-center text-[#634936] transition hover:bg-[#F0E7DD] disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Increase quantity"
+                    >
+                      <FiPlus className="text-sm" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* STOCK STATUS */}
+
+                <div className="text-right">
+                  <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.18em] text-[#A18C79] sm:text-[10px]">
+                    Availability
+                  </p>
+
+                  <p
+                    className={`font-beautify mt-2 text-xs font-semibold ${
+                      isInStock ? "text-[#718466]" : "text-[#B04A42]"
+                    }`}
+                  >
+                    {isInStock ? "In Stock" : "Out of Stock"}
+                  </p>
+                </div>
+              </div>
+
+              {/* ADD TO CART */}
+
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!isInStock}
+                className={`group relative mt-5 flex h-14 w-full items-center justify-center overflow-hidden rounded-[12px] px-6 font-manrope text-sm font-bold uppercase tracking-[0.12em] text-white shadow-[0_12px_30px_rgba(105,72,42,0.18)] transition-all duration-300 sm:h-16 sm:text-base ${
+                  isInStock
+                    ? "bg-[#C99658] hover:-translate-y-0.5 hover:bg-[#B98548] hover:shadow-[0_18px_35px_rgba(105,72,42,0.24)]"
+                    : "cursor-not-allowed bg-[#B8ACA1]"
+                }`}
+              >
+                <span className="relative z-10 flex items-center gap-3">
+                  {isInStock ? "Add to Cart" : "Out of Stock"}
+
+                  {isInStock ? (
+                    <FiShoppingCart className="text-lg transition-transform duration-300 group-hover:translate-x-1" />
+                  ) : (
+                    <FiCheck className="text-lg" />
+                  )}
+                </span>
+              </button>
+
+              {/* SMALL STOCK NOTE */}
+
+              <p className="font-beautify mt-3 text-center text-[9px] uppercase tracking-[0.12em] text-[#A18C79] sm:text-[10px]">
+                Secure your order while stock is available
+              </p>
+            </div>
+          </section>
         </div>
+
+        {/* =================================================
+            REVIEWS
+        ================================================= */}
+
+        <section
+          id="reviews"
+          className="mt-16 border-t border-[#E7DDD3] pt-10 sm:mt-20 sm:pt-14"
+        >
+          <Review productId={productId} product={productData} />
+        </section>
+
+        {/* =================================================
+            RELATED PRODUCTS
+        ================================================= */}
+
+        <section className="mt-16 sm:mt-20">
+          <RelatedProducts
+            seating={productData.seating}
+            material={productData.material}
+            productId={productId}
+          />
+        </section>
       </div>
-      <div className="mt-10 font-manrope">
-        <div className="flex bg-transparent">
-          <b className="border border-orange-300 text-[#231F1C] px-5 py-3 text-sm">
-            Description
-          </b>
-          <p className="border border-orange-300 px-5 py-3 text-sm">
-            Reviews (126)
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 border border-orange-300 px-6 py-6 text-sm text-[#6D655D]">
-          <p>
-            An e-commerce website is an online platform that facilitates the
-            buying and selling of products or services over the internet. It
-            serves as a virtual marketplace where businesses and individuals can
-            showcase their products, interact with customers, and conduct
-            transactions without the need for a physical presence. E-commerce
-            websites have gained immense popularity due to their convenience,
-            accessibility, and the global reach they offer.
-          </p>
-        </div>
-      </div>
-      <RelatedProducts
-        seating={productData.seating}
-        material={productData.material}
-        productId={productId}
-      />
-    </div>
-  ) : (
-    <div className="opacity-0"></div>
+    </main>
   );
 };
 

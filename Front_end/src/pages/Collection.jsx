@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useContext } from "react";
-import { FiSliders, FiX, FiChevronDown } from "react-icons/fi";
+import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
+import { FiSliders, FiX, FiChevronDown, FiPlus } from "react-icons/fi";
 import { ShopContext } from "../context/shopContext";
 import ProductCard from "../components/ProductCard";
 import Search from "../components/Search";
@@ -8,64 +8,352 @@ const Collection = () => {
   const { products, search } = useContext(ShopContext);
 
   const [showFilter, setShowFilter] = useState(false);
-  const [filterProducts, setFilterProducts] = useState([]);
-
   const [bestSeller, setBestSeller] = useState(false);
+  const [offersOnly, setOffersOnly] = useState(false);
+
+  const [category, setCategory] = useState("");
   const [material, setMaterial] = useState("");
+  const [type, setType] = useState("");
+  const [style, setStyle] = useState("");
   const [seat, setSeat] = useState("");
+  const [size, setSize] = useState("");
+  const [mattressType, setMattressType] = useState("");
+  const [firmness, setFirmness] = useState("");
+  const [thickness, setThickness] = useState("");
   const [priceRange, setPriceRange] = useState("");
 
   const [sortType, setSortType] = useState("Featured");
+  const [visibleCount, setVisibleCount] = useState(12);
 
-  // =========================================================
-  // SCROLL TO TOP
-  // =========================================================
+  const loadMoreRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  // =========================================================
-  // FILTER + SORT PRODUCTS
-  // =========================================================
+  const normalize = (value) => {
+    if (value === null || value === undefined) return "";
+    return String(value).trim().toLowerCase();
+  };
 
-  useEffect(() => {
-    let productCopy = [...products];
+  const getValue = (item, ...keys) => {
+    for (const key of keys) {
+      const directValue = item?.[key];
 
-    // Best Seller
-    if (bestSeller) {
-      productCopy = productCopy.filter((item) => item.bestSeller === true);
+      if (
+        directValue !== undefined &&
+        directValue !== null &&
+        directValue !== ""
+      ) {
+        return directValue;
+      }
+
+      const attributeValue = item?.attributes?.[key];
+
+      if (
+        attributeValue !== undefined &&
+        attributeValue !== null &&
+        attributeValue !== ""
+      ) {
+        return attributeValue;
+      }
     }
 
-    // Material
-    if (material) {
+    return "";
+  };
+
+  const isTrue = (value) =>
+    value === true || value === "true" || value === 1 || value === "1";
+
+  const getCategoryLabel = (value) => {
+    if (!value) return "";
+
+    return String(value)
+      .replace(/-/g, " ")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase());
+  };
+
+  const getProductCategory = (item) =>
+    normalize(getValue(item, "category", "productCategory"));
+
+  const getProductMaterial = (item) => getValue(item, "material");
+
+  const getProductType = (item) =>
+    getValue(
+      item,
+      "type",
+      "productType",
+      "bedType",
+      "tableType",
+      "almirahType",
+      "tvUnitType",
+    );
+
+  const getProductStyle = (item) => getValue(item, "style");
+
+  const getProductSeat = (item) => getValue(item, "seating", "seat", "seater");
+
+  const getProductSize = (item) => getValue(item, "size");
+
+  const getProductMattressType = (item) => getValue(item, "mattressType");
+
+  const getProductFirmness = (item) => getValue(item, "firmness");
+
+  const getProductThickness = (item) => getValue(item, "thickness");
+
+  const hasActiveOffer = (item) => {
+    const offer = item?.offer;
+
+    const active =
+      offer?.isActive === true ||
+      offer?.isActive === "true" ||
+      offer?.isActive === 1 ||
+      offer?.isActive === "1";
+
+    const discountValue = Number(offer?.discountValue || 0);
+
+    const discountType = offer?.discountType;
+
+    return (
+      active &&
+      discountValue > 0 &&
+      (discountType === "percentage" || discountType === "flat")
+    );
+  };
+
+  const uniqueValues = (items, getter) => {
+    const values = [];
+
+    items.forEach((item) => {
+      const value = getter(item);
+
+      if (Array.isArray(value)) {
+        value.forEach((entry) => {
+          if (entry !== undefined && entry !== null && entry !== "") {
+            values.push(String(entry));
+          }
+        });
+      } else if (value !== undefined && value !== null && value !== "") {
+        values.push(String(value));
+      }
+    });
+
+    return [...new Set(values)].sort((a, b) =>
+      a.localeCompare(b, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      }),
+    );
+  };
+
+  const categories = useMemo(
+    () =>
+      uniqueValues(products, getProductCategory).map((value) => ({
+        value,
+        label: getCategoryLabel(value),
+      })),
+    [products],
+  );
+
+  const categoryProducts = useMemo(() => {
+    if (!category) return products;
+
+    return products.filter(
+      (item) => getProductCategory(item) === normalize(category),
+    );
+  }, [products, category]);
+
+  const materials = useMemo(
+    () => uniqueValues(categoryProducts, getProductMaterial),
+    [categoryProducts],
+  );
+
+  const types = useMemo(
+    () => uniqueValues(categoryProducts, getProductType),
+    [categoryProducts],
+  );
+
+  const styles = useMemo(
+    () => uniqueValues(categoryProducts, getProductStyle),
+    [categoryProducts],
+  );
+
+  const seats = useMemo(
+    () => uniqueValues(categoryProducts, getProductSeat),
+    [categoryProducts],
+  );
+
+  const sizes = useMemo(
+    () => uniqueValues(categoryProducts, getProductSize),
+    [categoryProducts],
+  );
+
+  const mattressTypes = useMemo(
+    () => uniqueValues(categoryProducts, getProductMattressType),
+    [categoryProducts],
+  );
+
+  const firmnessOptions = useMemo(
+    () => uniqueValues(categoryProducts, getProductFirmness),
+    [categoryProducts],
+  );
+
+  const thicknessOptions = useMemo(
+    () => uniqueValues(categoryProducts, getProductThickness),
+    [categoryProducts],
+  );
+
+  const isMattressCategory = normalize(category) === "mattress";
+
+  const isSofaCategory =
+    normalize(category) === "sofa" || normalize(category) === "sofas";
+
+  useEffect(() => {
+    if (
+      material &&
+      !materials.some((item) => normalize(item) === normalize(material))
+    ) {
+      setMaterial("");
+    }
+
+    if (type && !types.some((item) => normalize(item) === normalize(type))) {
+      setType("");
+    }
+
+    if (style && !styles.some((item) => normalize(item) === normalize(style))) {
+      setStyle("");
+    }
+
+    if (seat && !seats.some((item) => normalize(item) === normalize(seat))) {
+      setSeat("");
+    }
+
+    if (size && !sizes.some((item) => normalize(item) === normalize(size))) {
+      setSize("");
+    }
+
+    if (
+      mattressType &&
+      !mattressTypes.some((item) => normalize(item) === normalize(mattressType))
+    ) {
+      setMattressType("");
+    }
+
+    if (
+      firmness &&
+      !firmnessOptions.some((item) => normalize(item) === normalize(firmness))
+    ) {
+      setFirmness("");
+    }
+
+    if (
+      thickness &&
+      !thicknessOptions.some((item) => normalize(item) === normalize(thickness))
+    ) {
+      setThickness("");
+    }
+  }, [
+    materials,
+    types,
+    styles,
+    seats,
+    sizes,
+    mattressTypes,
+    firmnessOptions,
+    thicknessOptions,
+    material,
+    type,
+    style,
+    seat,
+    size,
+    mattressType,
+    firmness,
+    thickness,
+  ]);
+
+  const filteredProducts = useMemo(() => {
+    let productCopy = [...products];
+
+    if (bestSeller) {
+      productCopy = productCopy.filter((item) => isTrue(item.bestSeller));
+    }
+
+    if (offersOnly) {
+      productCopy = productCopy.filter((item) => hasActiveOffer(item));
+    }
+
+    if (category) {
       productCopy = productCopy.filter(
-        (item) => item.material?.toLowerCase() === material.toLowerCase(),
+        (item) => getProductCategory(item) === normalize(category),
       );
     }
 
-    // Seating
-    if (seat) {
-      productCopy = productCopy.filter((item) => item.seating === seat);
+    if (material) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductMaterial(item)) === normalize(material),
+      );
     }
 
-    // Price
+    if (type) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductType(item)) === normalize(type),
+      );
+    }
+
+    if (style) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductStyle(item)) === normalize(style),
+      );
+    }
+
+    if (seat) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductSeat(item)) === normalize(seat),
+      );
+    }
+
+    if (size) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductSize(item)) === normalize(size),
+      );
+    }
+
+    if (mattressType) {
+      productCopy = productCopy.filter(
+        (item) =>
+          normalize(getProductMattressType(item)) === normalize(mattressType),
+      );
+    }
+
+    if (firmness) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductFirmness(item)) === normalize(firmness),
+      );
+    }
+
+    if (thickness) {
+      productCopy = productCopy.filter(
+        (item) => normalize(getProductThickness(item)) === normalize(thickness),
+      );
+    }
+
     if (priceRange) {
       productCopy = productCopy.filter((item) => {
-        const price = Number(item.price);
+        const price = Number(item.price) || 0;
 
         switch (priceRange) {
           case "under25":
             return price <= 25000;
 
-          case "25to35":
-            return price > 25000 && price <= 35000;
+          case "25to50":
+            return price > 25000 && price <= 50000;
 
-          case "35to50":
-            return price > 35000 && price <= 50000;
+          case "50to100":
+            return price > 50000 && price <= 100000;
 
-          case "above50":
-            return price > 50000;
+          case "above100":
+            return price > 100000;
 
           default:
             return true;
@@ -73,48 +361,141 @@ const Collection = () => {
       });
     }
 
-    // Search
     if (search) {
-      productCopy = productCopy.filter((item) =>
-        item.name?.toLowerCase().includes(search.toLowerCase()),
-      );
+      const searchValue = normalize(search);
+
+      productCopy = productCopy.filter((item) => {
+        const searchableText = [
+          item.name,
+          item.description,
+          item.category,
+          item.material,
+          item.type,
+          item.style,
+          item.seating,
+          item.size,
+          item.mattressType,
+          item.firmness,
+          item.thickness,
+        ]
+          .filter(Boolean)
+          .join(" ");
+
+        return normalize(searchableText).includes(searchValue);
+      });
     }
 
-    // Sorting
     switch (sortType) {
       case "HTL":
-        productCopy.sort((a, b) => Number(b.price) - Number(a.price));
+        productCopy.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
         break;
 
       case "LTH":
-        productCopy.sort((a, b) => Number(a.price) - Number(b.price));
+        productCopy.sort((a, b) => Number(a.price || 0) - Number(b.price || 0));
         break;
 
       case "New":
         productCopy.sort((a, b) => new Date(b.date) - new Date(a.date));
         break;
 
+      case "Featured":
       default:
+        productCopy.sort((a, b) => {
+          const bestA = isTrue(a.bestSeller) ? 1 : 0;
+          const bestB = isTrue(b.bestSeller) ? 1 : 0;
+
+          if (bestA !== bestB) return bestB - bestA;
+
+          const offerA = hasActiveOffer(a) ? 1 : 0;
+          const offerB = hasActiveOffer(b) ? 1 : 0;
+
+          return offerB - offerA;
+        });
         break;
     }
 
-    setFilterProducts(productCopy);
-  }, [products, bestSeller, material, seat, priceRange, search, sortType]);
+    return productCopy;
+  }, [
+    products,
+    bestSeller,
+    offersOnly,
+    category,
+    material,
+    type,
+    style,
+    seat,
+    size,
+    mattressType,
+    firmness,
+    thickness,
+    priceRange,
+    search,
+    sortType,
+  ]);
 
-  // =========================================================
-  // CLEAR FILTERS
-  // =========================================================
+  useEffect(() => {
+    setVisibleCount(12);
+  }, [
+    bestSeller,
+    offersOnly,
+    category,
+    material,
+    type,
+    style,
+    seat,
+    size,
+    mattressType,
+    firmness,
+    thickness,
+    priceRange,
+    search,
+    sortType,
+  ]);
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount],
+  );
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+
+    if (!target) return;
+
+    if (visibleCount >= filteredProducts.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((current) =>
+            Math.min(current + 8, filteredProducts.length),
+          );
+        }
+      },
+      {
+        rootMargin: "500px",
+      },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [visibleCount, filteredProducts.length]);
 
   const clearFilters = () => {
     setBestSeller(false);
+    setOffersOnly(false);
+    setCategory("");
     setMaterial("");
+    setType("");
+    setStyle("");
     setSeat("");
+    setSize("");
+    setMattressType("");
+    setFirmness("");
+    setThickness("");
     setPriceRange("");
   };
-
-  // =========================================================
-  // FILTER HANDLER
-  // =========================================================
 
   const handleFilterChange = (setter, value) => {
     setter(value);
@@ -124,31 +505,67 @@ const Collection = () => {
     }
   };
 
-  // =========================================================
-  // ACTIVE FILTER COUNT
-  // =========================================================
+  const activeFilterCount = [
+    bestSeller,
+    offersOnly,
+    category,
+    material,
+    type,
+    style,
+    seat,
+    size,
+    mattressType,
+    firmness,
+    thickness,
+    priceRange,
+  ].filter(Boolean).length;
 
-  const activeFilterCount = [bestSeller, material, seat, priceRange].filter(
-    Boolean,
-  ).length;
+  const filterButtonClass = (active) =>
+    `
+      rounded-full
+      border
+      px-4
+      py-2
 
-  // =========================================================
-  // RETURN
-  // =========================================================
+      font-beautify
+      text-xs
+      font-medium
+
+      transition-all
+      duration-200
+
+      ${
+        active
+          ? "border-[#80634B] bg-[#80634B] text-white shadow-sm"
+          : "border-[#D5C9BE] bg-white text-[#4E433A] hover:border-[#80634B] hover:bg-[#F1E8DE]"
+      }
+    `;
+
+  const renderOptionButtons = (options, value, setter) => (
+    <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto pr-1">
+      {options.map((option) => (
+        <button
+          key={option}
+          type="button"
+          onClick={() =>
+            handleFilterChange(
+              setter,
+              normalize(value) === normalize(option) ? "" : option,
+            )
+          }
+          className={filterButtonClass(normalize(value) === normalize(option))}
+        >
+          {getCategoryLabel(option)}
+        </button>
+      ))}
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-[#F8F5F0] pb-20">
-      {/* =====================================================
-          SEARCH
-      ===================================================== */}
-
       <div className="pt-5 sm:pt-7">
         <Search />
       </div>
-
-      {/* =====================================================
-          COLLECTION HEADER
-      ===================================================== */}
 
       <section className="mx-auto max-w-[1500px] px-3 pt-8 sm:px-5 sm:pt-10 lg:px-8">
         <div
@@ -159,20 +576,14 @@ const Collection = () => {
             border-b
             border-[#DCD2C8]
             pb-6
-
             sm:gap-7
             sm:pb-7
-
             lg:flex-row
             lg:items-end
             lg:justify-between
           "
         >
-          {/* ================= LEFT TITLE ================= */}
-
           <div>
-            {/* Small eyebrow */}
-
             <div className="mb-3 flex items-center gap-3 sm:mb-4">
               <span className="h-px w-8 bg-[#80634B] sm:w-10" />
 
@@ -184,15 +595,12 @@ const Collection = () => {
                   uppercase
                   tracking-[0.25em]
                   text-[#80634B]
-
                   sm:text-xs
                 "
               >
                 Furniture Collection
               </span>
             </div>
-
-            {/* Main heading */}
 
             <h1
               className="
@@ -202,12 +610,11 @@ const Collection = () => {
                 leading-none
                 tracking-[-0.035em]
                 text-[#29231F]
-
                 sm:text-5xl
                 md:text-6xl
               "
             >
-              Sofas
+              {category ? getCategoryLabel(category) : "Furniture"}
             </h1>
 
             <p
@@ -219,18 +626,15 @@ const Collection = () => {
                 font-medium
                 leading-5
                 text-[#74685E]
-
                 sm:mt-4
                 sm:text-sm
                 sm:leading-6
               "
             >
-              Discover sofas designed to bring comfort, character, and timeless
-              elegance into your home.
+              Discover thoughtfully designed furniture made to bring comfort,
+              character, and timeless elegance into your home.
             </p>
           </div>
-
-          {/* ================= RIGHT CONTROLS ================= */}
 
           <div
             className="
@@ -238,14 +642,10 @@ const Collection = () => {
               w-full
               items-center
               gap-2
-
               sm:gap-3
-
               lg:w-auto
             "
           >
-            {/* FILTER BUTTON */}
-
             <button
               type="button"
               onClick={() => setShowFilter(!showFilter)}
@@ -261,21 +661,17 @@ const Collection = () => {
                 bg-[#FBF8F4]
                 px-4
                 py-3
-
                 font-manrope
                 text-xs
                 font-extrabold
                 uppercase
                 tracking-[0.08em]
                 text-[#40362F]
-
                 shadow-sm
                 transition-all
                 duration-300
-
                 hover:border-[#80634B]
                 hover:bg-[#F0E7DE]
-
                 sm:flex-none
                 sm:px-5
                 sm:text-sm
@@ -300,7 +696,6 @@ const Collection = () => {
                     rounded-full
                     bg-[#80634B]
                     px-1.5
-
                     font-manrope
                     text-[10px]
                     font-extrabold
@@ -311,8 +706,6 @@ const Collection = () => {
                 </span>
               )}
             </button>
-
-            {/* SORT */}
 
             <div className="relative">
               <select
@@ -327,29 +720,22 @@ const Collection = () => {
                   py-3
                   pl-4
                   pr-10
-
                   font-manrope
                   text-xs
                   font-extrabold
                   text-[#40362F]
-
                   outline-none
                   shadow-sm
                   transition-all
-
                   focus:border-[#80634B]
                   focus:ring-1
                   focus:ring-[#80634B]/20
-
                   sm:text-sm
                 "
               >
                 <option value="Featured">Featured</option>
-
                 <option value="LTH">Price: Low to High</option>
-
                 <option value="HTL">Price: High to Low</option>
-
                 <option value="New">Newest</option>
               </select>
 
@@ -370,20 +756,15 @@ const Collection = () => {
         </div>
       </section>
 
-      {/* =====================================================
-          FILTER PANEL
-      ===================================================== */}
-
       <section className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8">
         <div
           className={`
             overflow-hidden
             transition-all
             duration-500
-
             ${
               showFilter
-                ? "mt-5 max-h-[1200px] opacity-100"
+                ? "mt-5 max-h-[1800px] opacity-100"
                 : "max-h-0 opacity-0"
             }
           `}
@@ -395,9 +776,7 @@ const Collection = () => {
               border-[#DED4CA]
               bg-[#FBF8F4]
               p-5
-
               shadow-[0_10px_30px_rgba(74,55,40,0.06)]
-
               sm:p-6
               lg:p-7
             "
@@ -406,16 +785,34 @@ const Collection = () => {
               className="
                 grid
                 grid-cols-1
-                gap-7
-
+                gap-x-8
+                gap-y-7
                 sm:grid-cols-2
-
-                lg:grid-cols-4
+                lg:grid-cols-3
+                xl:grid-cols-4
               "
             >
-              {/* =================================================
-                  BEST SELLER
-              ================================================= */}
+              <div>
+                <p
+                  className="
+                    mb-4
+                    font-manrope
+                    text-xs
+                    font-extrabold
+                    uppercase
+                    tracking-[0.16em]
+                    text-[#80634B]
+                  "
+                >
+                  Category
+                </p>
+
+                {renderOptionButtons(
+                  categories.map((item) => item.value),
+                  category,
+                  setCategory,
+                )}
+              </div>
 
               <div>
                 <p
@@ -432,171 +829,196 @@ const Collection = () => {
                   Collection
                 </p>
 
-                <label
-                  className="
-                    flex
-                    cursor-pointer
-                    items-center
-                    gap-3
-                  "
-                >
-                  <input
-                    type="checkbox"
-                    checked={bestSeller}
-                    onChange={(e) =>
-                      handleFilterChange(setBestSeller, e.target.checked)
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleFilterChange(setBestSeller, !bestSeller)
                     }
-                    className="
-                      h-5
-                      w-5
-                      cursor-pointer
-                      accent-[#80634B]
-                    "
-                  />
-
-                  <span
-                    className="
-                      font-manrope
-                      text-sm
-                      font-extrabold
-                      text-[#3F352E]
-
-                      sm:text-base
-                    "
+                    className={filterButtonClass(bestSeller)}
                   >
                     Best Sellers
-                  </span>
-                </label>
-              </div>
+                  </button>
 
-              {/* =================================================
-                  MATERIAL
-              ================================================= */}
-
-              <div>
-                <p
-                  className="
-                    mb-4
-                    font-manrope
-                    text-xs
-                    font-extrabold
-                    uppercase
-                    tracking-[0.16em]
-                    text-[#80634B]
-                  "
-                >
-                  Material
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    ["fabric", "Fabric"],
-                    ["leather", "Leather"],
-                    ["velvet", "Velvet"],
-                    ["linen", "Linen"],
-                  ].map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      onClick={() =>
-                        handleFilterChange(
-                          setMaterial,
-                          material === value ? "" : value,
-                        )
-                      }
-                      className={`
-                        rounded-full
-                        border
-                        px-4
-                        py-2
-
-                        font-manrope
-                        text-xs
-                        font-bold
-
-                        transition-all
-                        duration-200
-
-                        ${
-                          material === value
-                            ? "border-[#80634B] bg-[#80634B] text-white shadow-sm"
-                            : "border-[#D5C9BE] bg-white text-[#4E433A] hover:border-[#80634B] hover:bg-[#F1E8DE]"
-                        }
-                      `}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleFilterChange(setOffersOnly, !offersOnly)
+                    }
+                    className={filterButtonClass(offersOnly)}
+                  >
+                    On Offer
+                  </button>
                 </div>
               </div>
 
-              {/* =================================================
-                  SEATING
-              ================================================= */}
+              {materials.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Material
+                  </p>
 
-              <div>
-                <p
-                  className="
-                    mb-4
-                    font-manrope
-                    text-xs
-                    font-extrabold
-                    uppercase
-                    tracking-[0.16em]
-                    text-[#80634B]
-                  "
-                >
-                  Seating
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "1 Seater",
-                    "2 Seater",
-                    "3 Seater",
-                    "4 Seater",
-                    "5 Seater",
-                    "6 Seater",
-                    "L Shape",
-                  ].map((option) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() =>
-                        handleFilterChange(
-                          setSeat,
-                          seat === option ? "" : option,
-                        )
-                      }
-                      className={`
-                        rounded-full
-                        border
-                        px-4
-                        py-2
-
-                        font-manrope
-                        text-xs
-                        font-bold
-
-                        transition-all
-                        duration-200
-
-                        ${
-                          seat === option
-                            ? "border-[#80634B] bg-[#80634B] text-white shadow-sm"
-                            : "border-[#D5C9BE] bg-white text-[#4E433A] hover:border-[#80634B] hover:bg-[#F1E8DE]"
-                        }
-                      `}
-                    >
-                      {option}
-                    </button>
-                  ))}
+                  {renderOptionButtons(materials, material, setMaterial)}
                 </div>
-              </div>
+              )}
 
-              {/* =================================================
-                  PRICE
-              ================================================= */}
+              {types.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Type
+                  </p>
+
+                  {renderOptionButtons(types, type, setType)}
+                </div>
+              )}
+
+              {styles.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Style
+                  </p>
+
+                  {renderOptionButtons(styles, style, setStyle)}
+                </div>
+              )}
+
+              {seats.length > 0 && isSofaCategory && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Seating
+                  </p>
+
+                  {renderOptionButtons(seats, seat, setSeat)}
+                </div>
+              )}
+
+              {sizes.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Size
+                  </p>
+
+                  {renderOptionButtons(sizes, size, setSize)}
+                </div>
+              )}
+
+              {isMattressCategory && mattressTypes.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Mattress Type
+                  </p>
+
+                  {renderOptionButtons(
+                    mattressTypes,
+                    mattressType,
+                    setMattressType,
+                  )}
+                </div>
+              )}
+
+              {isMattressCategory && firmnessOptions.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Firmness
+                  </p>
+
+                  {renderOptionButtons(firmnessOptions, firmness, setFirmness)}
+                </div>
+              )}
+
+              {isMattressCategory && thicknessOptions.length > 0 && (
+                <div>
+                  <p
+                    className="
+                      mb-4
+                      font-manrope
+                      text-xs
+                      font-extrabold
+                      uppercase
+                      tracking-[0.16em]
+                      text-[#80634B]
+                    "
+                  >
+                    Thickness
+                  </p>
+
+                  {renderOptionButtons(
+                    thicknessOptions,
+                    thickness,
+                    setThickness,
+                  )}
+                </div>
+              )}
 
               <div>
                 <p
@@ -616,9 +1038,9 @@ const Collection = () => {
                 <div className="flex flex-wrap gap-2">
                   {[
                     ["under25", "Under 25K"],
-                    ["25to35", "25K – 35K"],
-                    ["35to50", "35K – 50K"],
-                    ["above50", "50K+"],
+                    ["25to50", "25K – 50K"],
+                    ["50to100", "50K – 1L"],
+                    ["above100", "1L+"],
                   ].map(([value, label]) => (
                     <button
                       key={value}
@@ -629,25 +1051,7 @@ const Collection = () => {
                           priceRange === value ? "" : value,
                         )
                       }
-                      className={`
-                        rounded-full
-                        border
-                        px-4
-                        py-2
-
-                        font-manrope
-                        text-xs
-                        font-bold
-
-                        transition-all
-                        duration-200
-
-                        ${
-                          priceRange === value
-                            ? "border-[#80634B] bg-[#80634B] text-white shadow-sm"
-                            : "border-[#D5C9BE] bg-white text-[#4E433A] hover:border-[#80634B] hover:bg-[#F1E8DE]"
-                        }
-                      `}
+                      className={filterButtonClass(priceRange === value)}
                     >
                       {label}
                     </button>
@@ -655,8 +1059,6 @@ const Collection = () => {
                 </div>
               </div>
             </div>
-
-            {/* CLEAR FILTERS */}
 
             {activeFilterCount > 0 && (
               <div
@@ -681,9 +1083,7 @@ const Collection = () => {
                     text-[#80634B]
                     underline
                     underline-offset-4
-
                     transition
-
                     hover:text-[#3F3025]
                   "
                 >
@@ -694,10 +1094,6 @@ const Collection = () => {
           </div>
         </div>
       </section>
-
-      {/* =====================================================
-          ACTIVE FILTERS
-      ===================================================== */}
 
       {activeFilterCount > 0 && (
         <section className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8">
@@ -733,6 +1129,40 @@ const Collection = () => {
               </span>
             )}
 
+            {offersOnly && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                On Offer
+              </span>
+            )}
+
+            {category && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(category)}
+              </span>
+            )}
+
             {material && (
               <span
                 className="
@@ -743,11 +1173,44 @@ const Collection = () => {
                   font-manrope
                   text-xs
                   font-bold
-                  capitalize
                   text-[#55463A]
                 "
               >
-                {material}
+                {getCategoryLabel(material)}
+              </span>
+            )}
+
+            {type && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(type)}
+              </span>
+            )}
+
+            {style && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(style)}
               </span>
             )}
 
@@ -764,7 +1227,75 @@ const Collection = () => {
                   text-[#55463A]
                 "
               >
-                {seat}
+                {getCategoryLabel(seat)}
+              </span>
+            )}
+
+            {size && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(size)}
+              </span>
+            )}
+
+            {mattressType && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(mattressType)}
+              </span>
+            )}
+
+            {firmness && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(firmness)}
+              </span>
+            )}
+
+            {thickness && (
+              <span
+                className="
+                  rounded-full
+                  bg-[#E9DED2]
+                  px-4
+                  py-2
+                  font-manrope
+                  text-xs
+                  font-bold
+                  text-[#55463A]
+                "
+              >
+                {getCategoryLabel(thickness)}
               </span>
             )}
 
@@ -782,53 +1313,80 @@ const Collection = () => {
                 "
               >
                 {priceRange === "under25" && "Under 25K"}
-                {priceRange === "25to35" && "25K – 35K"}
-                {priceRange === "35to50" && "35K – 50K"}
-                {priceRange === "above50" && "50K+"}
+                {priceRange === "25to50" && "25K – 50K"}
+                {priceRange === "50to100" && "50K – 1L"}
+                {priceRange === "above100" && "1L+"}
               </span>
             )}
           </div>
         </section>
       )}
 
-      {/* =====================================================
-          PRODUCTS
-      ===================================================== */}
-
       <section className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8">
-        {filterProducts.length > 0 ? (
-          <div
-            className="
-              mt-8
-              grid
-              grid-cols-2
-              gap-x-3
-              gap-y-7
+        {visibleProducts.length > 0 ? (
+          <>
+            <div
+              className="
+                mt-8
+                grid
+                grid-cols-2
+                gap-x-3
+                gap-y-7
+                sm:mt-10
+                sm:gap-x-5
+                sm:gap-y-10
+                md:grid-cols-3
+                lg:grid-cols-3
+                lg:gap-x-6
+                lg:gap-y-12
+                xl:grid-cols-4
+              "
+            >
+              {visibleProducts.map((item) => (
+                <ProductCard
+                  key={item._id}
+                  name={item.name}
+                  id={item._id}
+                  image={item.image?.[0]}
+                  price={item.price}
+                  description={item.description}
+                  offer={item.offer}
+                  stock={item.stock}
+                  bestSeller={item.bestSeller}
+                  category={item.category}
+                />
+              ))}
+            </div>
 
-              sm:mt-10
-              sm:gap-x-5
-              sm:gap-y-10
-
-              md:grid-cols-3
-
-              lg:grid-cols-3
-              lg:gap-x-6
-              lg:gap-y-12
-
-              xl:grid-cols-4
-            "
-          >
-            {filterProducts.map((item) => (
-              <ProductCard
-                key={item._id}
-                name={item.name}
-                id={item._id}
-                image={item.image?.[0]}
-                price={item.price}
-                description={item.description}
-              />
-            ))}
-          </div>
+            {visibleCount < filteredProducts.length && (
+              <div
+                ref={loadMoreRef}
+                className="
+                  flex
+                  h-24
+                  items-center
+                  justify-center
+                "
+              >
+                <div
+                  className="
+                    flex
+                    items-center
+                    gap-2
+                    font-manrope
+                    text-xs
+                    font-bold
+                    uppercase
+                    tracking-[0.12em]
+                    text-[#80634B]
+                  "
+                >
+                  <FiPlus size={14} />
+                  Loading more products
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div
             className="
@@ -853,7 +1411,7 @@ const Collection = () => {
                   text-[#3B2B20]
                 "
               >
-                No sofas found
+                No furniture found
               </p>
 
               <p
@@ -877,19 +1435,16 @@ const Collection = () => {
                   bg-[#332A24]
                   px-6
                   py-3
-
                   font-manrope
                   text-xs
                   font-extrabold
                   uppercase
                   tracking-[0.1em]
                   text-white
-
                   transition-all
                   duration-300
-
-                  hover:bg-[#80634B]
                   hover:-translate-y-0.5
+                  hover:bg-[#80634B]
                 "
               >
                 Clear Filters
