@@ -1,5 +1,7 @@
 import productModel from "../models/product.js";
 import { v2 as cloudinary } from "cloudinary";
+import userModel from "../models/users.js";
+import orderModel from "../models/order.js";
 
 const allowedCategories = [
   "Sofas",
@@ -57,6 +59,7 @@ const addProduct = async (req, res) => {
         const result = await cloudinary.uploader.upload(item.path, {
           resource_type: "image",
         });
+
         return result.secure_url;
       }),
     );
@@ -101,29 +104,21 @@ const addProduct = async (req, res) => {
       price: Number(price),
       material: material.trim(),
       attributes: parsedAttributes,
-
       offer: {
         isActive:
           parsedOffer.isActive === true || parsedOffer.isActive === "true",
-
         discountType:
           parsedOffer.discountType === "flat" ? "flat" : "percentage",
-
         discountValue: Number(parsedOffer.discountValue || 0),
-
         offerTitle: parsedOffer.offerTitle
           ? String(parsedOffer.offerTitle).trim()
           : "",
-
         offerEndsAt: parsedOffer.offerEndsAt
           ? new Date(parsedOffer.offerEndsAt)
           : null,
       },
-
       bestSeller: bestSeller === true || bestSeller === "true",
-
       stock: stock === true || stock === "true",
-
       image: imageUrl,
     };
 
@@ -308,12 +303,9 @@ const updateProduct = async (req, res) => {
 
     product.name = name?.trim() || product.name;
     product.description = description?.trim() || product.description;
-
     product.category = category || product.category;
-
     product.price =
       price !== undefined && price !== "" ? Number(price) : product.price;
-
     product.material = material?.trim() || product.material;
 
     product.attributes = parsedAttributes;
@@ -321,15 +313,11 @@ const updateProduct = async (req, res) => {
     product.offer = {
       isActive:
         parsedOffer.isActive === true || parsedOffer.isActive === "true",
-
       discountType: parsedOffer.discountType === "flat" ? "flat" : "percentage",
-
       discountValue: Number(parsedOffer.discountValue || 0),
-
       offerTitle: parsedOffer.offerTitle
         ? String(parsedOffer.offerTitle).trim()
         : "",
-
       offerEndsAt: parsedOffer.offerEndsAt
         ? new Date(parsedOffer.offerEndsAt)
         : null,
@@ -380,9 +368,19 @@ const updateProduct = async (req, res) => {
 
 const addReview = async (req, res) => {
   try {
-    const { productId, rating, comment, name } = req.body;
-
+    const { productId, rating, comment } = req.body;
     const userId = req.userId;
+
+    // ==============================
+    // VALIDATION
+    // ==============================
+
+    if (!userId) {
+      return res.json({
+        success: false,
+        message: "Please login to review this product",
+      });
+    }
 
     if (!productId) {
       return res.json({
@@ -391,7 +389,7 @@ const addReview = async (req, res) => {
       });
     }
 
-    if (!rating || rating < 1 || rating > 5) {
+    if (!rating || Number(rating) < 1 || Number(rating) > 5) {
       return res.json({
         success: false,
         message: "Rating must be between 1 and 5",
@@ -401,7 +399,356 @@ const addReview = async (req, res) => {
     if (!comment || !comment.trim()) {
       return res.json({
         success: false,
-        message: "Review comment is required",
+        message: "Please write a review",
+      });
+    }
+
+    if (comment.trim().length < 5) {
+      return res.json({
+        success: false,
+        message: "Review must contain at least 5 characters",
+      });
+    }
+
+    // ==============================
+    // GET USER
+    // ==============================
+
+    const user = await userModel.findById(userId);
+
+    if (!user) {
+      return res.json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // ==============================
+    // GET PRODUCT
+    // ==============================
+
+    const product = await productModel.findById(productId);
+
+    if (!product) {
+      return res.json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // ==============================
+    // CHECK DELIVERED PURCHASE
+    // ==============================
+
+    const orders = await orderModel.find({
+      userId: userId.toString(),
+    });
+
+    const hasPurchased = orders.some(
+      (order) =>
+        order.status === "Delivered" &&
+        (order.items || []).some((item) => {
+          const orderedProductId =
+            item.productId || item.product || item._id || item.id;
+
+          return (
+            orderedProductId &&
+            orderedProductId.toString() === productId.toString()
+          );
+        }),
+    );
+
+    if (!hasPurchased) {
+      return res.json({
+        success: false,
+        message: "You can only review products after they are delivered",
+      });
+    }
+
+    // ==============================
+    // CHECK EXISTING REVIEW
+    // ==============================
+
+    const alreadyReviewed = (product.reviews || []).find(
+      (review) => review.user && review.user.toString() === userId.toString(),
+    );
+
+    if (alreadyReviewed) {
+      return res.json({
+        success: false,
+        message: "You have already reviewed this product",
+      });
+    }
+
+    // ==============================
+    // NEW REVIEW
+    // ==============================
+
+    const newReview = {
+      user: userId,
+      name: user.name,
+      rating: Number(rating),
+      comment: comment.trim(),
+      date: new Date(),
+    };
+
+    // Use $push so Mongoose does not validate
+    // the entire Product document.
+
+    await productModel.updateOne(
+      { _id: productId },
+      {
+        $push: {
+          reviews: newReview,
+        },
+      },
+    );
+
+    return res.json({
+      success: true,
+      message: "Review added successfully",
+    });
+  } catch (error) {
+    console.log("ADD REVIEW ERROR:", error);
+
+    return res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const editReview = async (req, res) => {
+  try {
+    const { productId, rating, comment } = req.body;
+    const userId = req.userId;
+
+    // ==============================
+    // VALIDATION
+    // ==============================
+
+    if (!userId) {
+      return res.json({
+        success: false,
+        message: "Please login to edit your review",
+      });
+    }
+
+    if (!productId) {
+      return res.json({
+        success: false,
+        message: "Product ID is required",
+      });
+    }
+
+    if (!rating || Number(rating) < 1 || Number(rating) > 5) {
+      return res.json({
+        success: false,
+        message: "Rating must be between 1 and 5",
+      });
+    }
+
+    if (!comment || !comment.trim()) {
+      return res.json({
+        success: false,
+        message: "Please write a review",
+      });
+    }
+
+    if (comment.trim().length < 5) {
+      return res.json({
+        success: false,
+        message: "Review must contain at least 5 characters",
+      });
+    }
+
+    // ==============================
+    // GET PRODUCT
+    // ==============================
+
+    const product = await productModel.findById(productId);
+
+    if (!product) {
+      return res.json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // ==============================
+    // FIND USER'S REVIEW
+    // ==============================
+
+    const review = (product.reviews || []).find(
+      (review) => review.user && review.user.toString() === userId.toString(),
+    );
+
+    if (!review) {
+      return res.json({
+        success: false,
+        message: "You have not reviewed this product yet",
+      });
+    }
+
+    // ==============================
+    // UPDATE ONLY USER'S REVIEW
+    // ==============================
+
+    const result = await productModel.updateOne(
+      {
+        _id: productId,
+        "reviews._id": review._id,
+        "reviews.user": userId,
+      },
+      {
+        $set: {
+          "reviews.$.rating": Number(rating),
+          "reviews.$.comment": comment.trim(),
+          "reviews.$.date": new Date(),
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.json({
+        success: false,
+        message: "Unable to update review",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Review updated successfully",
+    });
+  } catch (error) {
+    console.log("EDIT REVIEW ERROR:", error);
+
+    return res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const replyToReview = async (req, res) => {
+  try {
+    const { productId, reviewId, comment } = req.body;
+
+    // ==============================
+    // VALIDATION
+    // ==============================
+
+    if (!productId || !reviewId) {
+      return res.json({
+        success: false,
+        message: "Product ID and review ID are required",
+      });
+    }
+
+    if (!comment || !comment.trim()) {
+      return res.json({
+        success: false,
+        message: "Reply comment is required",
+      });
+    }
+
+    if (comment.trim().length < 2) {
+      return res.json({
+        success: false,
+        message: "Reply must contain at least 2 characters",
+      });
+    }
+
+    // ==============================
+    // CHECK PRODUCT
+    // ==============================
+
+    const product = await productModel.findById(productId);
+
+    if (!product) {
+      return res.json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    // ==============================
+    // CHECK REVIEW
+    // ==============================
+
+    const review = product.reviews.id(reviewId);
+
+    if (!review) {
+      return res.json({
+        success: false,
+        message: "Review not found",
+      });
+    }
+
+    // ==============================
+    // ADMIN SIGNATURE
+    // ==============================
+
+    const signature =
+      "ADMIN-" + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+    // ==============================
+    // UPDATE ONLY THIS REVIEW
+    // ==============================
+
+    const result = await productModel.updateOne(
+      {
+        _id: productId,
+        "reviews._id": reviewId,
+      },
+      {
+        $set: {
+          "reviews.$.adminReply": {
+            comment: comment.trim(),
+            signature,
+            date: new Date(),
+          },
+        },
+      },
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.json({
+        success: false,
+        message: "Unable to save reply",
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Reply added successfully",
+      signature,
+    });
+  } catch (error) {
+    console.log("REPLY REVIEW ERROR:", error);
+
+    return res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+const myReview = async (req, res) => {
+  try {
+    const { productId } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      return res.json({
+        success: false,
+        message: "Please login",
+      });
+    }
+
+    if (!productId) {
+      return res.json({
+        success: false,
+        message: "Product ID is required",
       });
     }
 
@@ -414,34 +761,18 @@ const addReview = async (req, res) => {
       });
     }
 
-    const alreadyReviewed = product.reviews.find(
+    const review = (product.reviews || []).find(
       (review) => review.user && review.user.toString() === userId.toString(),
     );
 
-    if (alreadyReviewed) {
-      return res.json({
-        success: false,
-        message: "You have already reviewed this product",
-      });
-    }
-
-    product.reviews.push({
-      user: userId,
-      name: name || "Customer",
-      rating: Number(rating),
-      comment: comment.trim(),
-    });
-
-    await product.save();
-
-    res.json({
+    return res.json({
       success: true,
-      message: "Review added successfully",
+      review: review || null,
     });
   } catch (error) {
-    console.log(error);
+    console.log("MY REVIEW ERROR:", error);
 
-    res.json({
+    return res.json({
       success: false,
       message: error.message,
     });
@@ -455,4 +786,7 @@ export {
   singleProduct,
   updateProduct,
   addReview,
+  editReview,
+  replyToReview,
+  myReview,
 };

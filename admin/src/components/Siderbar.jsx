@@ -1,7 +1,7 @@
 import React from "react";
 import { NavLink } from "react-router-dom";
 import { MdAddBox } from "react-icons/md";
-import { FaClipboardList } from "react-icons/fa";
+import { FaClipboardList, FaStar } from "react-icons/fa";
 import { BsBoxSeam } from "react-icons/bs";
 
 const Siderbar = () => {
@@ -21,21 +21,26 @@ const Siderbar = () => {
       path: "/order",
       icon: <BsBoxSeam size={20} />,
     },
+    {
+      name: "Reviews",
+      path: "/review",
+      icon: <FaStar size={20} />,
+    },
   ];
 
   return (
-    <aside className="h-full w-16 sm:w-20 md:w-64 bg-white border-r">
+    <aside className="h-full w-16 border-r bg-white sm:w-20 md:w-64">
       {/* Header */}
-      <div className="border-b px-2 sm:px-3 md:px-6 py-5">
-        <h2 className="hidden md:block text-xl font-bold text-gray-800">
+      <div className="border-b px-2 py-5 sm:px-3 md:px-6">
+        <h2 className="hidden text-xl font-bold text-gray-800 md:block">
           Dashboard
         </h2>
 
-        <p className="hidden md:block text-sm text-gray-500">Admin Panel</p>
+        <p className="hidden text-sm text-gray-500 md:block">Admin Panel</p>
 
         {/* Mobile icon */}
-        <div className="md:hidden flex justify-center">
-          <div className="w-9 h-9 rounded-lg bg-black text-white flex items-center justify-center font-bold">
+        <div className="flex justify-center md:hidden">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-black font-bold text-white">
             A
           </div>
         </div>
@@ -62,7 +67,7 @@ const Siderbar = () => {
           >
             {item.icon}
 
-            <span className="hidden md:block font-medium">{item.name}</span>
+            <span className="hidden font-medium md:block">{item.name}</span>
           </NavLink>
         ))}
       </nav>

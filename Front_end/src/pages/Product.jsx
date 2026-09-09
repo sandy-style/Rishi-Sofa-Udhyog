@@ -1,5 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import { useParams, Link } from "react-router-dom";
+import axios from "axios";
+
 import { ShopContext } from "../context/shopContext";
 import RelatedProducts from "../components/RelatedProducts";
 import Review from "../components/Review";
@@ -12,7 +14,13 @@ import {
   FiPlus,
   FiShoppingCart,
   FiTag,
+  FiUser,
+  FiMessageCircle,
+  FiShield,
+  FiPenTool,
 } from "react-icons/fi";
+
+import { backendUrl } from "../App";
 
 const Product = ({ token, setShowLogin }) => {
   const { productId } = useParams();
@@ -26,8 +34,36 @@ const Product = ({ token, setShowLogin }) => {
   const [quantity, setQuantity] = useState(1);
 
   // =====================================================
+  // REVIEW / ORDER STATE
+  // =====================================================
+
+  const [deliveredOrder, setDeliveredOrder] = useState(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [hasMyReview, setHasMyReview] = useState(false);
+
+  // =====================================================
+  // GET USER ID FROM TOKEN
+  // =====================================================
+
+  const getUserIdFromToken = (tokenValue) => {
+    try {
+      if (!tokenValue) return null;
+
+      const payload = JSON.parse(atob(tokenValue.split(".")[1]));
+
+      return payload.userId || payload.id || payload._id || null;
+    } catch (error) {
+      return null;
+    }
+  };
+
+  // =====================================================
   // GET PRODUCT
   // =====================================================
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   useEffect(() => {
     if (!products?.length) return;
@@ -48,6 +84,88 @@ const Product = ({ token, setShowLogin }) => {
   useEffect(() => {
     getProductsFromCart();
   }, [productId]);
+
+  // =====================================================
+  // CHECK DELIVERED ORDER
+  // =====================================================
+
+  useEffect(() => {
+    const checkDeliveredOrder = async () => {
+      if (!token || !productId) {
+        setDeliveredOrder(null);
+        return;
+      }
+
+      try {
+        const response = await axios.post(
+          backendUrl + "/api/order/userorders",
+          {},
+          {
+            headers: {
+              token,
+            },
+          },
+        );
+
+        if (!response.data.success) {
+          setDeliveredOrder(null);
+          return;
+        }
+
+        const orders = Array.isArray(response.data.orders)
+          ? response.data.orders
+          : [];
+
+        const matchingDeliveredOrder = orders.find((order) => {
+          if (order.status !== "Delivered") {
+            return false;
+          }
+
+          if (!Array.isArray(order.items)) {
+            return false;
+          }
+
+          return order.items.some((item) => {
+            const itemProductId =
+              item?.productId || item?.product || item?._id || item?.id;
+
+            return String(itemProductId) === String(productId);
+          });
+        });
+
+        setDeliveredOrder(matchingDeliveredOrder || null);
+      } catch (error) {
+        console.error("Check delivered order error:", error);
+        setDeliveredOrder(null);
+      }
+    };
+
+    checkDeliveredOrder();
+  }, [token, productId]);
+
+  // =====================================================
+  // CHECK IF USER ALREADY REVIEWED
+  // =====================================================
+
+  useEffect(() => {
+    if (!token || !productData?.reviews) {
+      setHasMyReview(false);
+      return;
+    }
+
+    const userId = getUserIdFromToken(token);
+
+    if (!userId) {
+      setHasMyReview(false);
+      return;
+    }
+
+    const myReview = productData.reviews.some(
+      (review) => review.user && String(review.user) === String(userId),
+    );
+
+    setHasMyReview(myReview);
+  }, [token, productData]);
 
   // =====================================================
   // STOCK
@@ -134,17 +252,57 @@ const Product = ({ token, setShowLogin }) => {
   // REVIEWS
   // =====================================================
 
-  const reviews = productData?.reviews || [];
+  const reviews = Array.isArray(productData?.reviews)
+    ? productData.reviews
+    : [];
 
   const reviewCount = reviews.length;
 
   const averageRating =
     reviewCount > 0
-      ? (
-          reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
-          reviewCount
-        ).toFixed(1)
-      : "0.0";
+      ? reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0) /
+        reviewCount
+      : 0;
+
+  const formattedAverageRating =
+    reviewCount > 0 ? averageRating.toFixed(1) : "0.0";
+
+  const ratingCounts = useMemo(() => {
+    return [5, 4, 3, 2, 1].map((star) => {
+      const count = reviews.filter(
+        (review) => Number(review.rating) === star,
+      ).length;
+
+      const percentage =
+        reviewCount > 0 ? Math.round((count / reviewCount) * 100) : 0;
+
+      return {
+        star,
+        count,
+        percentage,
+      };
+    });
+  }, [reviews, reviewCount]);
+
+  // =====================================================
+  // REVIEW DATE
+  // =====================================================
+
+  const formatReviewDate = (date) => {
+    if (!date) return "Recently";
+
+    const parsedDate = new Date(date);
+
+    if (Number.isNaN(parsedDate.getTime())) {
+      return "Recently";
+    }
+
+    return parsedDate.toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    });
+  };
 
   // =====================================================
   // PRODUCT DETAILS
@@ -154,14 +312,6 @@ const Product = ({ token, setShowLogin }) => {
     if (!productData) return [];
 
     const details = [];
-
-    /*
-      Your backend category is:
-      "Matteress"
-
-      So support both Matteress and mattress
-      just in case old products use another value.
-    */
 
     const category = String(productData.category || "").toLowerCase();
 
@@ -289,6 +439,42 @@ const Product = ({ token, setShowLogin }) => {
     } else {
       setQuantity((prev) => Math.max(prev - 1, 1));
     }
+  };
+
+  // =====================================================
+  // REVIEW ACTION
+  // =====================================================
+
+  const handleReviewAction = () => {
+    if (!token) {
+      setShowLogin(true);
+      return;
+    }
+
+    if (!deliveredOrder) {
+      return;
+    }
+
+    setShowReviewModal(true);
+  };
+
+  // =====================================================
+  // REVIEW MODAL CLOSE
+  // =====================================================
+
+  const handleCloseReview = () => {
+    setShowReviewModal(false);
+  };
+
+  // =====================================================
+  // REVIEW SUCCESS
+  // =====================================================
+
+  const handleReviewSuccess = () => {
+    setShowReviewModal(false);
+
+    // Reload the page so the latest review is immediately visible
+    window.location.reload();
   };
 
   // =====================================================
@@ -430,10 +616,7 @@ const Product = ({ token, setShowLogin }) => {
                       </>
                     )}
 
-                    {/* =================================================
-                        OFFER BADGE
-                        SMALLER ON MOBILE
-                    ================================================= */}
+                    {/* OFFER BADGE */}
 
                     {isOfferActive && (
                       <div className="absolute left-2 top-2 sm:left-5 sm:top-5">
@@ -467,7 +650,6 @@ const Product = ({ token, setShowLogin }) => {
                         type="button"
                         onClick={() => {
                           setImage(productData.image[index]);
-
                           setActiveImageIndex(index);
                         }}
                         aria-label={`View image ${index + 1}`}
@@ -525,32 +707,46 @@ const Product = ({ token, setShowLogin }) => {
             </h1>
 
             {/* =================================================
-                RATING
+                RATING SUMMARY
             ================================================= */}
 
             <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#E7DDD3] pb-5">
-              <div className="flex items-center gap-1 text-[#C38B43]">
-                <span className="text-base tracking-[0.08em] sm:text-lg">
-                  ★★★★★
-                </span>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <span
+                    key={star}
+                    className={`text-base sm:text-lg ${
+                      star <= Math.round(averageRating)
+                        ? "text-[#C38B43]"
+                        : "text-[#D8CCBF]"
+                    }`}
+                  >
+                    ★
+                  </span>
+                ))}
               </div>
 
-              <span className="font-beautify text-xs font-semibold text-[#634936] sm:text-sm">
-                {reviewCount > 0 ? averageRating : "No ratings"}
+              <span className="font-manrope text-xs font-bold text-[#634936] sm:text-sm">
+                {reviewCount > 0 ? formattedAverageRating : "No ratings"}
               </span>
 
               <span className="h-1 w-1 rounded-full bg-[#C8B7A5]" />
 
-              <a
-                href="#reviews"
+              <button
+                type="button"
+                onClick={() => {
+                  document.getElementById("reviews")?.scrollIntoView({
+                    behavior: "smooth",
+                  });
+                }}
                 className="font-beautify text-xs font-medium text-[#806F62] underline-offset-4 transition hover:text-[#634936] hover:underline sm:text-sm"
               >
                 {reviewCount > 0
                   ? `${reviewCount} Customer ${
                       reviewCount === 1 ? "Review" : "Reviews"
                     }`
-                  : "Be the first to review"}
-              </a>
+                  : "Customer Reviews"}
+              </button>
             </div>
 
             {/* =================================================
@@ -563,26 +759,18 @@ const Product = ({ token, setShowLogin }) => {
               </p>
 
               <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1.5">
-                {/* DISCOUNTED PRICE */}
-
                 <span className="font-manrope text-[32px] font-bold leading-none tracking-[-0.045em] text-[#63432F] sm:text-[38px] lg:text-[42px]">
                   {currency}
-
                   {Math.round(finalPrice).toLocaleString("en-IN")}
                 </span>
-
-                {/* ORIGINAL PRICE */}
 
                 {isOfferActive && (
                   <span className="font-beautify text-sm font-medium text-[#A18C79] line-through sm:text-base">
                     {currency}
-
                     {Math.round(originalPrice).toLocaleString("en-IN")}
                   </span>
                 )}
               </div>
-
-              {/* SAVINGS */}
 
               {isOfferActive && (
                 <div className="mt-3 flex flex-wrap items-center gap-2.5">
@@ -605,7 +793,7 @@ const Product = ({ token, setShowLogin }) => {
 
             {productData.description && (
               <div className="mt-6 sm:mt-7">
-                <p className="font-beautify text-xs leading-6 text-[#71665D] sm:text-sm sm:leading-6">
+                <p className="font-beautify text-xs leading-6 text-[#71655D] sm:text-sm sm:leading-6">
                   {productData.description}
                 </p>
               </div>
@@ -690,8 +878,6 @@ const Product = ({ token, setShowLogin }) => {
                   </div>
                 </div>
 
-                {/* STOCK STATUS */}
-
                 <div className="text-right">
                   <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.18em] text-[#A18C79] sm:text-[10px]">
                     Availability
@@ -730,8 +916,6 @@ const Product = ({ token, setShowLogin }) => {
                 </span>
               </button>
 
-              {/* SMALL STOCK NOTE */}
-
               <p className="font-beautify mt-3 text-center text-[9px] uppercase tracking-[0.12em] text-[#A18C79] sm:text-[10px]">
                 Secure your order while stock is available
               </p>
@@ -740,14 +924,306 @@ const Product = ({ token, setShowLogin }) => {
         </div>
 
         {/* =================================================
-            REVIEWS
+            CUSTOMER REVIEWS
         ================================================= */}
 
         <section
           id="reviews"
           className="mt-16 border-t border-[#E7DDD3] pt-10 sm:mt-20 sm:pt-14"
         >
-          <Review productId={productId} product={productData} />
+          {/* =================================================
+              HEADER
+          ================================================= */}
+
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.22em] text-[#9A795B]">
+                Customer Experience
+              </p>
+
+              <h2 className="mt-1 font-serif text-[30px] font-medium tracking-[-0.035em] text-[#30231B] sm:text-[38px]">
+                What Our Customers Say
+              </h2>
+
+              <p className="font-beautify mt-2 max-w-[650px] text-sm leading-6 text-[#806F62]">
+                Reviews are shared by customers who purchased this product and
+                received their order.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
+              {/* REVIEW COUNT */}
+
+              {reviewCount > 0 && (
+                <div className="flex items-center gap-2 rounded-full border border-[#E4D8CC] bg-[#F8F3ED] px-4 py-2">
+                  <FiMessageCircle className="text-sm text-[#8A684C]" />
+
+                  <span className="font-manrope text-[10px] font-bold uppercase tracking-[0.12em] text-[#634936]">
+                    {reviewCount} {reviewCount === 1 ? "Review" : "Reviews"}
+                  </span>
+                </div>
+              )}
+
+              {/* =================================================
+                  SINGLE REVIEW BUTTON
+              ================================================= */}
+
+              {token && deliveredOrder && (
+                <button
+                  type="button"
+                  onClick={handleReviewAction}
+                  className="group inline-flex items-center gap-2 rounded-full bg-[#634936] px-5 py-2.5 font-manrope text-[10px] font-bold uppercase tracking-[0.1em] text-white shadow-[0_8px_20px_rgba(73,51,35,0.14)] transition-all duration-300 hover:-translate-y-0.5 hover:bg-[#4D3829] hover:shadow-[0_12px_25px_rgba(73,51,35,0.2)]"
+                >
+                  <FiPenTool className="text-sm transition-transform duration-300 group-hover:rotate-[-8deg]" />
+
+                  {hasMyReview ? "Edit Review" : "Write a Review"}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* =================================================
+              REVIEW SUMMARY
+          ================================================= */}
+
+          {reviewCount > 0 ? (
+            <>
+              <div className="mt-8 grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
+                {/* OVERALL RATING */}
+
+                <div className="rounded-[22px] border border-[#E5D9CE] bg-[#FBF8F4] p-6 sm:p-7">
+                  <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.18em] text-[#A18C79]">
+                    Overall Rating
+                  </p>
+
+                  <div className="mt-4 flex items-end gap-3">
+                    <span className="font-serif text-[56px] font-medium leading-none tracking-[-0.06em] text-[#30231B]">
+                      {formattedAverageRating}
+                    </span>
+
+                    <span className="font-beautify mb-1 text-xs text-[#8D7B6D]">
+                      out of 5
+                    </span>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span
+                        key={star}
+                        className={`text-xl ${
+                          star <= Math.round(averageRating)
+                            ? "text-[#C99658]"
+                            : "text-[#D8CCBF]"
+                        }`}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+
+                  <p className="font-beautify mt-3 text-xs leading-5 text-[#8D7B6D]">
+                    Based on {reviewCount} customer{" "}
+                    {reviewCount === 1 ? "experience" : "experiences"}.
+                  </p>
+                </div>
+
+                {/* RATING DISTRIBUTION */}
+
+                <div className="rounded-[22px] border border-[#E5D9CE] bg-white p-6 sm:p-7">
+                  <div>
+                    <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.16em] text-[#634936]">
+                      Rating Breakdown
+                    </p>
+
+                    <p className="font-beautify mt-1 text-xs text-[#9A8878]">
+                      See how customers rated this product.
+                    </p>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    {ratingCounts.map(({ star, count, percentage }) => (
+                      <div key={star} className="flex items-center gap-3">
+                        <div className="flex w-10 shrink-0 items-center gap-1">
+                          <span className="font-manrope text-xs font-semibold text-[#634936]">
+                            {star}
+                          </span>
+
+                          <span className="text-xs text-[#C99658]">★</span>
+                        </div>
+
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#EEE7DF]">
+                          <div
+                            className="h-full rounded-full bg-[#C99658] transition-all duration-700"
+                            style={{
+                              width: `${percentage}%`,
+                            }}
+                          />
+                        </div>
+
+                        <span className="font-beautify w-10 text-right text-[11px] text-[#8D7B6D]">
+                          {count}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* =================================================
+                  REVIEW LIST
+              ================================================= */}
+
+              <div className="mt-8">
+                <div className="mb-4">
+                  <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.16em] text-[#634936]">
+                    Customer Reviews
+                  </p>
+
+                  <p className="font-beautify mt-1 text-xs text-[#9A8878]">
+                    Real feedback from customers who purchased this product.
+                  </p>
+                </div>
+
+                <div className="grid gap-4">
+                  {reviews.map((review, index) => {
+                    const rating = Math.min(
+                      5,
+                      Math.max(0, Number(review.rating) || 0),
+                    );
+
+                    const adminReply = review.adminReply;
+
+                    const replyText =
+                      adminReply?.message ||
+                      adminReply?.comment ||
+                      adminReply?.text ||
+                      adminReply?.reply ||
+                      "";
+
+                    return (
+                      <article
+                        key={review._id || `${review.user}-${index}`}
+                        className="rounded-[20px] border border-[#E5D9CE] bg-white p-5 transition-all duration-300 hover:border-[#D4C1AF] hover:shadow-[0_12px_30px_rgba(73,51,35,0.06)] sm:p-6"
+                      >
+                        {/* REVIEW HEADER */}
+
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EEE5DB] text-[#765B45]">
+                              <FiUser className="text-base" />
+                            </div>
+
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate font-manrope text-sm font-bold text-[#30231B]">
+                                  {review.name || "Customer"}
+                                </p>
+                              </div>
+
+                              <div className="mt-1 flex flex-wrap items-center gap-2">
+                                <span className="font-beautify text-[10px] text-[#9A8878]">
+                                  {formatReviewDate(review.date)}
+                                </span>
+
+                                <span className="h-1 w-1 rounded-full bg-[#CBBBAA]" />
+
+                                <span className="inline-flex items-center gap-1 font-beautify text-[10px] font-semibold text-[#718466]">
+                                  <FiShield className="text-[10px]" />
+                                  Verified Purchase
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* STARS */}
+
+                          <div className="flex shrink-0 items-center gap-0.5">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <span
+                                key={star}
+                                className={`text-sm ${
+                                  star <= rating
+                                    ? "text-[#C99658]"
+                                    : "text-[#DDD2C7]"
+                                }`}
+                              >
+                                ★
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* COMMENT */}
+
+                        <div className="mt-5 rounded-[14px] bg-[#FBF8F4] px-4 py-4">
+                          <p className="font-beautify text-sm leading-6 text-[#62564D]">
+                            {review.comment}
+                          </p>
+                        </div>
+
+                        {/* ADMIN REPLY */}
+
+                        {replyText && (
+                          <div className="mt-5 rounded-[15px] border border-[#E6D9CC] bg-[#FBF7F2] p-4 sm:ml-8">
+                            <div className="flex items-center gap-2">
+                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#E9DED2] text-[#765B45]">
+                                <FiMessageCircle className="text-xs" />
+                              </div>
+
+                              <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.14em] text-[#634936]">
+                                Response from our team
+                              </p>
+                            </div>
+
+                            <p className="font-beautify mt-2 text-xs leading-5 text-[#75685E]">
+                              {replyText}
+                            </p>
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            /* =================================================
+                EMPTY REVIEW STATE
+            ================================================= */
+
+            <div className="mt-8 overflow-hidden rounded-[24px] border border-[#E5D9CE] bg-[#FBF7F2]">
+              <div className="relative px-6 py-12 text-center sm:px-10 sm:py-16">
+                <div className="pointer-events-none absolute -left-20 -top-20 h-40 w-40 rounded-full bg-[#E7D8C8]/40 blur-3xl" />
+
+                <div className="pointer-events-none absolute -bottom-20 -right-20 h-40 w-40 rounded-full bg-[#DCC8B3]/30 blur-3xl" />
+
+                <div className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-[#E0D2C4] bg-white shadow-[0_8px_25px_rgba(73,51,35,0.06)]">
+                  <FiMessageCircle className="text-2xl text-[#9A795B]" />
+                </div>
+
+                <p className="font-manrope mt-5 text-[10px] font-bold uppercase tracking-[0.2em] text-[#9A795B]">
+                  Customer Experience
+                </p>
+
+                <h3 className="mt-2 font-serif text-[27px] font-medium tracking-[-0.03em] text-[#30231B] sm:text-[32px]">
+                  No customer reviews yet
+                </h3>
+
+                <p className="font-beautify mx-auto mt-3 max-w-[500px] text-sm leading-6 text-[#806F62]">
+                  Reviews will appear here after customers receive their orders
+                  and share their experience.
+                </p>
+
+                <div className="mx-auto mt-6 flex w-fit items-center gap-2 rounded-full border border-[#E2D5C8] bg-white px-4 py-2">
+                  <FiShield className="text-sm text-[#9A795B]" />
+
+                  <span className="font-beautify text-[10px] font-semibold uppercase tracking-[0.1em] text-[#8D7B6D]">
+                    Verified customer reviews
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </section>
 
         {/* =================================================
@@ -762,6 +1238,32 @@ const Product = ({ token, setShowLogin }) => {
           />
         </section>
       </div>
+
+      {/* =====================================================
+          REVIEW POPUP
+      ===================================================== */}
+
+      {showReviewModal && deliveredOrder && (
+        <Review
+          order={deliveredOrder}
+          item={
+            deliveredOrder.items?.find((item) => {
+              const itemProductId =
+                item?.productId || item?.product || item?._id || item?.id;
+
+              return String(itemProductId) === String(productId);
+            }) || {
+              name: productData.name,
+              image: productData.image,
+              quantity: 1,
+            }
+          }
+          productId={productId}
+          token={token}
+          onClose={handleCloseReview}
+          onSuccess={handleReviewSuccess}
+        />
+      )}
     </main>
   );
 };

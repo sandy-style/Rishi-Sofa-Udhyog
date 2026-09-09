@@ -5,11 +5,17 @@ import {
   listProducts,
   updateProduct,
   addReview,
+  editReview,
+  replyToReview,
+  myReview,
 } from "../Controllers/productController.js";
+
 import express from "express";
+
 import adminAuth from "../middleware/adminAuth.js";
 import upload from "../middleware/multer.js";
 import authUser from "../middleware/auth.js";
+
 const productRouter = express.Router();
 
 productRouter.post(
@@ -25,16 +31,25 @@ productRouter.post(
 );
 
 productRouter.post("/removeproduct", adminAuth, removeProduct);
+
 productRouter.get("/listproducts", listProducts);
+
 productRouter.post("/review", authUser, addReview);
+
+productRouter.put("/review/edit", authUser, editReview);
+
+productRouter.post("/review/reply", adminAuth, replyToReview);
+
 productRouter.post("/singleinfo", singleProduct);
+
+productRouter.post("/review/myreview", authUser, myReview);
 productRouter.post(
   "/updateproduct",
   adminAuth,
   upload.fields([
     { name: "image1", maxCount: 1 },
     { name: "image2", maxCount: 1 },
-    { name: "image3", maxCount: 3 },
+    { name: "image3", maxCount: 1 },
     { name: "image4", maxCount: 1 },
   ]),
   updateProduct,

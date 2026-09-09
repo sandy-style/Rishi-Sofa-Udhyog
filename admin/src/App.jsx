@@ -9,6 +9,8 @@ import Add from "./pages/Add";
 import List from "./pages/List";
 import Orders from "./pages/Orders";
 import Login from "./pages/Login";
+import Reply from "./components/Reply";
+import Review from "./pages/Review";
 
 export const backendUrl = import.meta.env.VITE_backend_url;
 
@@ -64,6 +66,8 @@ const App = () => {
             <Route path="/order" element={<Orders token={token} />} />
 
             <Route path="/order/:orderId" element={<Orders token={token} />} />
+
+            <Route path="/review" element={<Review token={token} />} />
 
             <Route path="/login" element={<Login />} />
           </Routes>

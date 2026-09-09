@@ -1,9 +1,15 @@
 import React, { useContext, useEffect, useState } from "react";
-import { FiArrowUpRight, FiPackage, FiShoppingBag } from "react-icons/fi";
+import {
+  FiArrowUpRight,
+  FiPackage,
+  FiShoppingBag,
+  FiEdit3,
+} from "react-icons/fi";
 import { ShopContext } from "../context/shopContext";
 import axios from "axios";
 import { backendUrl } from "../App";
 import { toast } from "react-toastify";
+import Review from "../components/Review";
 
 const formatDate = (date) => {
   return new Date(date).toLocaleDateString("en-GB", {
@@ -53,7 +59,11 @@ const getOrderStatusDot = (status) => {
 
 const Orders = () => {
   const { currency, token, navigate } = useContext(ShopContext);
+
   const [orderData, setOrderData] = useState([]);
+
+  // Product/order item selected for review
+  const [selectedReview, setSelectedReview] = useState(null);
 
   const loadOrderData = async () => {
     try {
@@ -80,6 +90,24 @@ const Orders = () => {
   useEffect(() => {
     loadOrderData();
   }, [token]);
+
+  /*
+   * Open review popup
+   *
+   * We keep the complete order + item information here so the
+   * Review component can later use it for adding/editing.
+   */
+  const openReview = (order, item) => {
+    setSelectedReview({
+      order,
+      item,
+      productId: item.productId || item._id || item.id,
+    });
+  };
+
+  const closeReview = () => {
+    setSelectedReview(null);
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F5F0] px-3 py-10 font-manrope sm:px-5 sm:py-14 lg:px-8 lg:py-16">
@@ -233,7 +261,7 @@ const Orders = () => {
                   </div>
 
                   {/* =================================================
-                      PRICE + STATUS
+                      PRICE + STATUS + REVIEW
                   ================================================= */}
 
                   <div className="flex flex-row items-center justify-between gap-5 border-t border-[#E7DFD7] bg-[#F9F6F2] p-5 sm:p-7 lg:flex-col lg:items-end lg:justify-center lg:border-l lg:border-t-0 lg:p-8">
@@ -249,7 +277,9 @@ const Orders = () => {
                     </div>
 
                     <div className="flex flex-col items-end gap-2">
-                      {/* Order Status */}
+                      {/* =========================
+                          ORDER STATUS
+                      ========================= */}
 
                       <span
                         className={`
@@ -280,7 +310,9 @@ const Orders = () => {
                         {order.status}
                       </span>
 
-                      {/* Payment Status */}
+                      {/* =========================
+                          PAYMENT STATUS
+                      ========================= */}
 
                       <span
                         className={`
@@ -314,6 +346,57 @@ const Orders = () => {
 
                         {order.payment ? "Paid" : "Payment Pending"}
                       </span>
+
+                      {/* =========================
+                          REVIEW BUTTON
+
+                          Only visible when order is
+                          actually Delivered.
+                      ========================= */}
+
+                      {order.status === "Delivered" && (
+                        <button
+                          type="button"
+                          onClick={() => openReview(order, item)}
+                          className="
+                            group/review
+                            mt-1
+                            inline-flex
+                            items-center
+                            justify-center
+                            gap-2
+                            rounded-xl
+                            border
+                            border-[#80634B]
+                            bg-[#80634B]
+                            px-4
+                            py-2.5
+                            font-manrope
+                            text-[9px]
+                            font-bold
+                            uppercase
+                            tracking-[0.1em]
+                            text-white
+                            shadow-[0_5px_15px_rgba(128,99,75,0.16)]
+                            transition-all
+                            duration-300
+                            hover:-translate-y-0.5
+                            hover:bg-[#6F543E]
+                            hover:shadow-[0_8px_20px_rgba(128,99,75,0.22)]
+                            active:translate-y-0
+                          "
+                        >
+                          <FiEdit3
+                            size={13}
+                            className="
+                              transition-transform
+                              duration-300
+                              group-hover/review:rotate-[-8deg]
+                            "
+                          />
+                          Write a Review
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -376,6 +459,24 @@ const Orders = () => {
           </div>
         )}
       </div>
+
+      {/* =====================================================
+          REVIEW POPUP
+      ===================================================== */}
+
+      {selectedReview && (
+        <Review
+          order={selectedReview.order}
+          item={selectedReview.item}
+          productId={selectedReview.productId}
+          token={token}
+          onClose={closeReview}
+          onSuccess={() => {
+            closeReview();
+            loadOrderData();
+          }}
+        />
+      )}
     </div>
   );
 };

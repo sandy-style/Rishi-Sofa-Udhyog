@@ -1,56 +1,96 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { FiStar, FiUser, FiSend } from "react-icons/fi";
+import { FiStar, FiX, FiSend, FiEdit3, FiCheck } from "react-icons/fi";
 import { toast } from "react-toastify";
 import { backendUrl } from "../App";
-import { ShopContext } from "../context/shopContext";
 
-const Review = ({ product, setShowLogin }) => {
+const Review = ({ order, item, productId, token, onClose, onSuccess }) => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState("");
+
+  const [existingReview, setExistingReview] = useState(null);
+  const [loadingReview, setLoadingReview] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const { token } = useContext(ShopContext);
-  const reviews = product?.reviews || [];
 
-  const averageRating = useMemo(() => {
-    if (!reviews.length) return 0;
+  // ==========================================
+  // LOAD EXISTING REVIEW
+  // ==========================================
 
-    const total = reviews.reduce(
-      (sum, review) => sum + Number(review.rating || 0),
-      0,
-    );
+  useEffect(() => {
+    const loadExistingReview = async () => {
+      if (!productId || !token) {
+        setExistingReview(null);
+        setRating(0);
+        setComment("");
+        setLoadingReview(false);
+        return;
+      }
 
-    return total / reviews.length;
-  }, [reviews]);
+      try {
+        setLoadingReview(true);
 
-  const ratingCounts = useMemo(() => {
-    return [5, 4, 3, 2, 1].map((star) => ({
-      star,
-      count: reviews.filter((review) => Number(review.rating) === star).length,
-    }));
-  }, [reviews]);
+        const response = await axios.post(
+          backendUrl + "/api/admin/review/myreview",
+          {
+            productId,
+          },
+          {
+            headers: {
+              token,
+            },
+          },
+        );
 
-  const percentage = (count) => {
-    if (!reviews.length) return 0;
-    return Math.round((count / reviews.length) * 100);
+        if (response.data.success && response.data.review) {
+          const review = response.data.review;
+
+          setExistingReview(review);
+          setRating(Number(review.rating) || 0);
+          setComment(review.comment || "");
+        } else {
+          setExistingReview(null);
+          setRating(0);
+          setComment("");
+        }
+      } catch (error) {
+        console.error("Load review error:", error);
+
+        setExistingReview(null);
+        setRating(0);
+        setComment("");
+      } finally {
+        setLoadingReview(false);
+      }
+    };
+
+    loadExistingReview();
+  }, [productId, token]);
+
+  // ==========================================
+  // CLOSE MODAL
+  // ==========================================
+
+  const handleBackdropClick = (e) => {
+    if (e.target === e.currentTarget && !submitting) {
+      onClose?.();
+    }
   };
 
-  const formatDate = (date) => {
-    if (!date) return "";
-
-    return new Date(date).toLocaleDateString("en-IN", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    });
-  };
+  // ==========================================
+  // SUBMIT / UPDATE REVIEW
+  // ==========================================
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!token) {
-      setShowLogin?.(true);
+      toast.error("Please log in to review");
+      return;
+    }
+
+    if (!productId) {
+      toast.error("Product information is missing");
       return;
     }
 
@@ -59,12 +99,14 @@ const Review = ({ product, setShowLogin }) => {
       return;
     }
 
-    if (!comment.trim()) {
+    const trimmedComment = comment.trim();
+
+    if (!trimmedComment) {
       toast.error("Please write a review");
       return;
     }
 
-    if (comment.trim().length < 5) {
+    if (trimmedComment.length < 5) {
       toast.error("Review must contain at least 5 characters");
       return;
     }
@@ -72,280 +114,312 @@ const Review = ({ product, setShowLogin }) => {
     try {
       setSubmitting(true);
 
-      const response = await axios.post(
-        backendUrl + "/api/admin/review",
-        {
-          productId: product._id,
-          rating,
-          comment: comment.trim(),
-          name: "Customer",
-        },
-        {
-          headers: {
-            token,
+      let response;
+
+      // ==========================================
+      // EDIT EXISTING REVIEW
+      // ==========================================
+
+      if (existingReview?._id) {
+        response = await axios.put(
+          backendUrl + "/api/admin/review/edit",
+          {
+            productId,
+            rating: Number(rating),
+            comment: trimmedComment,
           },
-        },
-      );
+          {
+            headers: {
+              token,
+            },
+          },
+        );
+      }
+
+      // ==========================================
+      // ADD NEW REVIEW
+      // ==========================================
+      else {
+        response = await axios.post(
+          backendUrl + "/api/admin/review",
+          {
+            productId,
+            rating: Number(rating),
+            comment: trimmedComment,
+          },
+          {
+            headers: {
+              token,
+            },
+          },
+        );
+      }
 
       if (response.data.success) {
-        toast.success("Review added successfully");
-        setRating(0);
-        setHoverRating(0);
-        setComment("");
-        window.location.reload();
+        toast.success(
+          existingReview
+            ? "Review updated successfully"
+            : "Review added successfully",
+        );
+
+        onSuccess?.();
       } else {
-        toast.error(response.data.message);
+        toast.error(
+          response.data.message ||
+            (existingReview
+              ? "Unable to update review"
+              : "Unable to submit review"),
+        );
       }
     } catch (error) {
+      console.error("Review submit error:", error);
+
       toast.error(
         error.response?.data?.message ||
           error.message ||
-          "Unable to submit review",
+          "Unable to save review",
       );
     } finally {
       setSubmitting(false);
     }
   };
 
-  return (
-    <section className="mt-12 border-t border-[#E8DED3] pt-10  sm:pt-14">
-      <div className="mb-8 text-center sm:mb-10">
-        <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.25em] text-[#9A795B] sm:text-xs">
-          Customer Experience
-        </p>
+  // ==========================================
+  // PRODUCT IMAGE
+  // ==========================================
 
-        <h2 className="mt-2 font-serif text-[30px] font-medium tracking-[-0.035em] text-[#2F241D] sm:text-[38px]">
-          What Our Customers Say
-        </h2>
+  const productImage =
+    Array.isArray(item?.image) && item.image.length > 0
+      ? item.image[0]
+      : item?.image;
 
-        <p className="font-beautify mx-auto mt-3 max-w-xl text-sm leading-6 text-[#7E746D]">
-          Real experiences from customers who have brought our furniture into
-          their homes.
-        </p>
+  // ==========================================
+  // LOADING
+  // ==========================================
+
+  if (loadingReview) {
+    return (
+      <div
+        onClick={handleBackdropClick}
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-[#241A14]/50 px-4 backdrop-blur-[3px]"
+      >
+        <div className="w-full max-w-md rounded-[24px] border border-[#E4D8CC] bg-[#FCFAF7] p-8 text-center shadow-[0_25px_80px_rgba(45,30,20,0.25)]">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#DCCFC1] border-t-[#634936]" />
+
+          <p className="font-beautify mt-4 text-sm text-[#806F62]">
+            Loading your review...
+          </p>
+        </div>
       </div>
+    );
+  }
 
-      <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr]">
-        <div className="rounded-[22px] border border-[#E4D8CC] bg-[#FBF8F4] p-6 sm:p-8">
-          <div className="flex flex-col items-center text-center">
-            <span className="font-serif text-5xl font-medium tracking-tight text-[#3B2B20] sm:text-6xl">
-              {averageRating ? averageRating.toFixed(1) : "0.0"}
-            </span>
+  return (
+    <div
+      onClick={handleBackdropClick}
+      className="fixed inset-0 z-[100] flex items-center justify-center overflow-y-auto bg-[#241A14]/50 px-4 py-6 backdrop-blur-[3px] sm:px-6"
+    >
+      {/* ==========================================
+          MODAL
+      ========================================== */}
+
+      <div className="relative my-auto w-full max-w-[520px] overflow-hidden rounded-[26px] border border-[#E3D6C9] bg-[#FCFAF7] shadow-[0_25px_80px_rgba(45,30,20,0.28)]">
+        {/* ==========================================
+            CLOSE BUTTON
+        ========================================== */}
+
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={submitting}
+          aria-label="Close review"
+          className="absolute right-5 top-5 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-[#E2D5C8] bg-white text-[#765B45] transition hover:bg-[#F3EAE0] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <FiX className="text-lg" />
+        </button>
+
+        {/* ==========================================
+            HEADER
+        ========================================== */}
+
+        <div className="border-b border-[#E8DED3] px-6 pb-5 pt-7 sm:px-8">
+          <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.22em] text-[#9A795B]">
+            Customer Experience
+          </p>
+
+          <h2 className="mt-1 pr-10 font-serif text-[27px] font-medium tracking-[-0.03em] text-[#30231B] sm:text-[30px]">
+            {existingReview ? "Edit Your Review" : "Write a Review"}
+          </h2>
+
+          <p className="font-beautify mt-2 text-sm leading-5 text-[#806F62]">
+            {existingReview
+              ? "Update your experience with this product."
+              : "Tell us what you think about this product."}
+          </p>
+        </div>
+
+        {/* ==========================================
+            PRODUCT
+        ========================================== */}
+
+        <div className="px-6 pt-5 sm:px-8">
+          <div className="flex items-center gap-4 rounded-[17px] border border-[#E5D9CE] bg-white p-3">
+            {productImage ? (
+              <img
+                src={productImage}
+                alt={item?.name || "Product"}
+                className="h-[68px] w-[68px] shrink-0 rounded-xl object-cover"
+              />
+            ) : (
+              <div className="flex h-[68px] w-[68px] shrink-0 items-center justify-center rounded-xl bg-[#F1E8DE] text-[#765B45]">
+                <FiStar className="text-xl" />
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <h3 className="truncate font-manrope text-sm font-bold text-[#3B2B20]">
+                {item?.name || "Product"}
+              </h3>
+
+              <p className="font-beautify mt-1 text-xs text-[#9A897B]">
+                Quantity: {item?.quantity || 1}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* ==========================================
+            FORM
+        ========================================== */}
+
+        <form
+          onSubmit={handleSubmit}
+          className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8"
+        >
+          {/* ==========================================
+              RATING
+          ========================================== */}
+
+          <div>
+            <p className="font-manrope text-[11px] font-bold uppercase tracking-[0.13em] text-[#634936]">
+              Your Rating
+            </p>
 
             <div className="mt-3 flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((star) => (
-                <FiStar
-                  key={star}
-                  className={`h-5 w-5 ${
-                    star <= Math.round(averageRating)
-                      ? "fill-[#C99658] text-[#C99658]"
-                      : "text-[#D8C9B8]"
-                  }`}
-                />
-              ))}
-            </div>
+              {[1, 2, 3, 4, 5].map((star) => {
+                const activeStar = star <= (hoverRating || rating);
 
-            <p className="font-beautify mt-3 text-sm text-[#806F62]">
-              {reviews.length}{" "}
-              {reviews.length === 1 ? "customer review" : "customer reviews"}
-            </p>
-          </div>
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    aria-label={`${star} star`}
+                    onMouseEnter={() => setHoverRating(star)}
+                    onMouseLeave={() => setHoverRating(0)}
+                    onClick={() => setRating(star)}
+                    disabled={submitting}
+                    className="rounded-full p-1.5 transition-transform duration-200 hover:scale-110 disabled:cursor-not-allowed"
+                  >
+                    <FiStar
+                      className={`h-8 w-8 transition-all duration-200 ${
+                        activeStar
+                          ? "fill-[#C99658] text-[#C99658]"
+                          : "text-[#D6C7B8]"
+                      }`}
+                    />
+                  </button>
+                );
+              })}
 
-          <div className="mt-8 space-y-3">
-            {ratingCounts.map(({ star, count }) => (
-              <div key={star} className="flex items-center gap-3">
-                <span className="font-manrope w-8 text-xs font-semibold text-[#634936]">
-                  {star} ★
+              {rating > 0 && (
+                <span className="font-beautify ml-2 text-sm text-[#806F62]">
+                  {rating}/5
                 </span>
-
-                <div className="h-2 flex-1 overflow-hidden rounded-full bg-[#E9DED2]">
-                  <div
-                    className="h-full rounded-full bg-[#C99658] transition-all duration-500"
-                    style={{ width: `${percentage(count)}%` }}
-                  />
-                </div>
-
-                <span className="font-beautify w-8 text-right text-xs text-[#8A7A6D]">
-                  {count}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="rounded-[22px] border border-[#E4D8CC] bg-white p-6 sm:p-8">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.2em] text-[#9A795B]">
-                Share your experience
-              </p>
-
-              <h3 className="mt-1 font-serif text-2xl text-[#30231B] sm:text-3xl">
-                Leave a Review
-              </h3>
-            </div>
-
-            <div className="hidden h-11 w-11 items-center justify-center rounded-full bg-[#F3EAE0] text-[#765B45] sm:flex">
-              <FiStar className="text-lg" />
+              )}
             </div>
           </div>
 
-          {!token ? (
-            <div className="mt-7 rounded-xl border border-[#E6DCD1] bg-[#FCFAF7] p-5 text-center">
-              <p className="font-beautify text-sm text-[#75685E]">
-                Please log in to share your experience with this product.
-              </p>
+          {/* ==========================================
+              COMMENT
+          ========================================== */}
 
-              <button
-                type="button"
-                onClick={() => setShowLogin?.(true)}
-                className="mt-4 rounded-lg bg-[#634936] px-6 py-3 font-manrope text-xs font-bold uppercase tracking-[0.08em] text-white transition hover:bg-[#4D3829]"
-              >
-                Log In to Review
-              </button>
+          <div className="mt-6">
+            <label
+              htmlFor="review-comment"
+              className="font-manrope text-[11px] font-bold uppercase tracking-[0.13em] text-[#634936]"
+            >
+              Your Review
+            </label>
+
+            <textarea
+              id="review-comment"
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              maxLength={500}
+              rows={5}
+              disabled={submitting}
+              placeholder="Tell us about your experience with this product..."
+              className="font-beautify mt-3 w-full resize-none rounded-[15px] border border-[#DDD0C3] bg-white px-4 py-3.5 text-sm leading-6 text-[#30231B] outline-none transition placeholder:text-[#AA9A8B] focus:border-[#A9825E] focus:ring-2 focus:ring-[#A9825E]/10 disabled:cursor-not-allowed disabled:opacity-70"
+            />
+
+            <div className="mt-2 flex justify-end">
+              <span className="font-beautify text-[11px] text-[#A18C79]">
+                {comment.length}/500
+              </span>
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="mt-7">
-              <div>
-                <p className="font-manrope text-xs font-bold uppercase tracking-[0.12em] text-[#634936]">
-                  Your Rating
-                </p>
+          </div>
 
-                <div className="mt-3 flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <button
-                      key={star}
-                      type="button"
-                      aria-label={`${star} star`}
-                      onMouseEnter={() => setHoverRating(star)}
-                      onMouseLeave={() => setHoverRating(0)}
-                      onClick={() => setRating(star)}
-                      className="rounded-full p-1 transition-transform duration-200 hover:scale-110"
-                    >
-                      <FiStar
-                        className={`h-7 w-7 transition-colors ${
-                          star <= (hoverRating || rating)
-                            ? "fill-[#C99658] text-[#C99658]"
-                            : "text-[#D5C6B7]"
-                        }`}
-                      />
-                    </button>
-                  ))}
+          {/* ==========================================
+              BUTTONS
+          ========================================== */}
 
-                  {rating > 0 && (
-                    <span className="font-beautify ml-2 text-sm text-[#806F62]">
-                      {rating}/5
-                    </span>
-                  )}
-                </div>
-              </div>
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex-1 rounded-xl border border-[#DCCFC1] bg-white px-5 py-3.5 font-manrope text-xs font-bold uppercase tracking-[0.08em] text-[#634936] transition hover:bg-[#F5EEE7] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Cancel
+            </button>
 
-              <div className="mt-6">
-                <label
-                  htmlFor="review-comment"
-                  className="font-manrope text-xs font-bold uppercase tracking-[0.12em] text-[#634936]"
-                >
-                  Your Review
-                </label>
+            <button
+              type="submit"
+              disabled={submitting}
+              className="group flex flex-1 items-center justify-center gap-2.5 rounded-xl bg-[#634936] px-5 py-3.5 font-manrope text-xs font-bold uppercase tracking-[0.08em] text-white transition-all duration-300 hover:bg-[#4D3829] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {existingReview ? (
+                <FiEdit3 className="text-base" />
+              ) : (
+                <FiSend className="text-base transition-transform duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              )}
 
-                <textarea
-                  id="review-comment"
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  maxLength={500}
-                  rows={5}
-                  placeholder="Tell us about your experience with this product..."
-                  className="font-beautify mt-3 w-full resize-none rounded-xl border border-[#DDD0C3] bg-[#FCFAF7] px-4 py-3 text-sm text-[#30231B] outline-none transition placeholder:text-[#A99A8C] focus:border-[#A9825E] focus:ring-2 focus:ring-[#A9825E]/10"
-                />
+              {submitting
+                ? existingReview
+                  ? "Updating..."
+                  : "Submitting..."
+                : existingReview
+                  ? "Update Review"
+                  : "Submit Review"}
+            </button>
+          </div>
 
-                <div className="mt-2 flex justify-end">
-                  <span className="font-beautify text-[11px] text-[#A18C79]">
-                    {comment.length}/500
-                  </span>
-                </div>
-              </div>
+          {/* ==========================================
+              EDIT INDICATOR
+          ========================================== */}
 
-              <button
-                type="submit"
-                disabled={submitting}
-                className="group mt-4 flex w-full items-center justify-center gap-3 rounded-xl bg-[#634936] px-6 py-3.5 font-manrope text-xs font-bold uppercase tracking-[0.1em] text-white transition-all duration-300 hover:bg-[#4D3829] hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                <FiSend
-                  className={`text-base transition-transform duration-300 ${
-                    submitting
-                      ? ""
-                      : "group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
-                  }`}
-                />
+          {existingReview && !submitting && (
+            <div className="mt-4 flex items-center justify-center gap-2 text-center">
+              <FiCheck className="text-sm text-[#8A6A4E]" />
 
-                {submitting ? "Submitting..." : "Submit Review"}
-              </button>
-            </form>
+              <p className="font-beautify text-xs text-[#8A7A6D]">
+                You are editing your existing review
+              </p>
+            </div>
           )}
-        </div>
+        </form>
       </div>
-
-      <div className="mt-8 sm:mt-10">
-        {reviews.length === 0 ? (
-          <div className="rounded-[22px] border border-dashed border-[#DCCFC1] bg-[#FCFAF7] px-6 py-12 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-[#F1E8DE] text-[#765B45]">
-              <FiUser className="text-xl" />
-            </div>
-
-            <h3 className="mt-4 font-serif text-xl text-[#30231B]">
-              No reviews yet
-            </h3>
-
-            <p className="font-beautify mt-2 text-sm text-[#8A7A6D]">
-              Be the first customer to share your experience.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {reviews.map((review) => (
-              <article
-                key={review._id}
-                className="rounded-[20px] border border-[#E7DDD3] bg-white p-5 transition-shadow duration-300 hover:shadow-[0_12px_35px_rgba(73,51,35,0.07)] sm:p-6"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFE5DA] font-serif text-lg text-[#634936]">
-                      {review.name?.charAt(0)?.toUpperCase() || "C"}
-                    </div>
-
-                    <div className="min-w-0">
-                      <h4 className="truncate font-manrope text-sm font-bold text-[#3B2B20]">
-                        {review.name || "Customer"}
-                      </h4>
-
-                      <p className="font-beautify mt-0.5 text-xs text-[#A18C79]">
-                        {formatDate(review.date)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <FiStar
-                        key={star}
-                        className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${
-                          star <= Number(review.rating)
-                            ? "fill-[#C99658] text-[#C99658]"
-                            : "text-[#D8C9B8]"
-                        }`}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <p className="font-beautify mt-4 text-sm leading-6 text-[#655A52]">
-                  {review.comment}
-                </p>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
-    </section>
+    </div>
   );
 };
 

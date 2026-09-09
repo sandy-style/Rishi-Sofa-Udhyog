@@ -1,5 +1,29 @@
 import mongoose, { Schema } from "mongoose";
 
+const adminReplySchema = new Schema(
+  {
+    comment: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    signature: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    date: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
 const reviewSchema = new Schema(
   {
     user: {
@@ -7,25 +31,34 @@ const reviewSchema = new Schema(
       ref: "user",
       required: true,
     },
+
     name: {
       type: String,
       required: true,
       trim: true,
     },
+
     rating: {
       type: Number,
       required: true,
       min: 1,
       max: 5,
     },
+
     comment: {
       type: String,
       required: true,
       trim: true,
     },
+
     date: {
       type: Date,
       default: Date.now,
+    },
+
+    adminReply: {
+      type: adminReplySchema,
+      default: null,
     },
   },
   {
@@ -39,21 +72,25 @@ const offerSchema = new Schema(
       type: Boolean,
       default: false,
     },
+
     discountType: {
       type: String,
       enum: ["percentage", "flat"],
       default: "percentage",
     },
+
     discountValue: {
       type: Number,
       default: 0,
       min: 0,
     },
+
     offerTitle: {
       type: String,
       default: "",
       trim: true,
     },
+
     offerEndsAt: {
       type: Date,
       default: null,
@@ -71,31 +108,37 @@ const productSchema = new Schema(
       required: true,
       trim: true,
     },
+
     description: {
       type: String,
       required: true,
       trim: true,
     },
+
     category: {
       type: String,
       enum: ["Sofas", "Beds", "Almirahs", "Tables", "Tv-units", "Matteress"],
       required: true,
     },
+
     price: {
       type: Number,
       required: true,
       min: 0,
     },
+
     material: {
       type: String,
       required: true,
       trim: true,
     },
+
     attributes: {
       type: Map,
       of: String,
       default: {},
     },
+
     offer: {
       type: offerSchema,
       default: () => ({
@@ -106,18 +149,22 @@ const productSchema = new Schema(
         offerEndsAt: null,
       }),
     },
+
     reviews: {
       type: [reviewSchema],
       default: [],
     },
+
     bestSeller: {
       type: Boolean,
       default: false,
     },
+
     stock: {
       type: Boolean,
       default: true,
     },
+
     image: {
       type: [String],
       required: true,
@@ -128,6 +175,7 @@ const productSchema = new Schema(
         message: "At least one product image is required",
       },
     },
+
     date: {
       type: Date,
       default: Date.now,

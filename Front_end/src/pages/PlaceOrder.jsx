@@ -1,11 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useContext } from "react";
 import CartTotal from "../components/CartTotal";
 import { assets } from "../assets/assets";
 import axios from "axios";
 import { backendUrl } from "../App";
-import { useContext } from "react";
 import { ShopContext } from "../context/shopContext";
 import { toast } from "react-toastify";
+
 const PlaceOrder = ({ setShowLogin }) => {
   const {
     totalAmount,
@@ -17,7 +17,9 @@ const PlaceOrder = ({ setShowLogin }) => {
     token,
     getCartCount,
   } = useContext(ShopContext);
+
   const [payMethod, setPayMethod] = useState("COD");
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -33,25 +35,35 @@ const PlaceOrder = ({ setShowLogin }) => {
     const name = event.target.name;
     const value = event.target.value;
 
-    setFormData((data) => ({ ...data, [name]: value }));
+    setFormData((data) => ({
+      ...data,
+      [name]: value,
+    }));
   };
 
   const onSubmitHandler = async (e) => {
     e.preventDefault();
+
     if (!token) {
       setShowLogin(true);
       return;
     }
+
     try {
-      let orderItems = [];
       if (getCartCount() === 0) {
         navigate("/collection");
         toast.error("Please add to cart");
         return;
       }
 
+      let orderItems = [];
+
       for (const itemId in cartItem) {
         const product = products.find((p) => p._id === itemId);
+
+        if (!product) {
+          continue;
+        }
 
         orderItems.push({
           productId: product._id,
@@ -61,18 +73,30 @@ const PlaceOrder = ({ setShowLogin }) => {
           quantity: cartItem[itemId],
         });
       }
-      let orderData = {
+
+      if (orderItems.length === 0) {
+        toast.error("Unable to create order");
+        return;
+      }
+
+      const orderData = {
         items: orderItems,
         address: formData,
         amount: totalAmount() + delievery_fee,
       };
+
       switch (payMethod) {
-        case "COD":
+        case "COD": {
           const response = await axios.post(
             backendUrl + "/api/order/place",
             orderData,
-            { headers: { token } },
+            {
+              headers: {
+                token,
+              },
+            },
           );
+
           if (response.data.success) {
             toast.success(response.data.message);
             setCartItem({});
@@ -80,33 +104,45 @@ const PlaceOrder = ({ setShowLogin }) => {
           } else {
             toast.error(response.data.message);
           }
+
           break;
+        }
+
+        case "esewa": {
+          toast.info("eSewa payment is not available yet");
+          break;
+        }
+
+        case "khalti": {
+          toast.info("Khalti payment is not available yet");
+          break;
+        }
 
         default:
           break;
       }
     } catch (error) {
       console.log(error);
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || error.message);
     }
   };
+
   return (
     <form onSubmit={onSubmitHandler}>
-      <div className="min-h-screen  py-10 px-4 sm:px-6 lg:px-10">
+      <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-10">
         <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
-          {/* ================= DELIVERY FORM ================= */}
           <div className="flex-1 bg-white shadow-lg border border-[#DED7CE] rounded-3xl p-6 md:p-8">
             <div className="mb-8">
               <h2 className="text-3xl font-['Cormorant_Garamond'] text-[#231F1C]">
                 Delivery Details
               </h2>
+
               <p className="text-sm text-[#6D655D] mt-1">
                 Fill in your shipping information.
               </p>
             </div>
 
             <div className="space-y-5">
-              {/* First & Last Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
                   onChange={onChangeHandler}
@@ -114,8 +150,7 @@ const PlaceOrder = ({ setShowLogin }) => {
                   value={formData.firstName}
                   type="text"
                   placeholder="First Name"
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
                   required
                 />
 
@@ -125,13 +160,11 @@ const PlaceOrder = ({ setShowLogin }) => {
                   value={formData.lastName}
                   type="text"
                   placeholder="Last Name"
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
                   required
                 />
               </div>
 
-              {/* Email & Phone */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
                   onChange={onChangeHandler}
@@ -139,8 +172,7 @@ const PlaceOrder = ({ setShowLogin }) => {
                   value={formData.email}
                   type="email"
                   placeholder="Email Address"
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
                   required
                 />
 
@@ -150,33 +182,27 @@ const PlaceOrder = ({ setShowLogin }) => {
                   value={formData.phone}
                   type="tel"
                   placeholder="Phone Number"
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
                   required
                 />
               </div>
 
-              {/* Address */}
               <input
                 onChange={onChangeHandler}
                 name="street"
                 value={formData.street}
                 type="text"
                 placeholder="Street Address"
-                className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-          placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
                 required
               />
 
-              {/* Apartment */}
               <input
                 type="text"
                 placeholder="Apartment, Suite (Optional)"
-                className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-          placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
               />
 
-              {/* City & Province */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
                   onChange={onChangeHandler}
@@ -184,8 +210,7 @@ const PlaceOrder = ({ setShowLogin }) => {
                   value={formData.city}
                   type="text"
                   placeholder="City"
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] placeholder:text-[#8A8178] outline-none focus:border-[#C99658] transition"
                   required
                 />
 
@@ -193,63 +218,59 @@ const PlaceOrder = ({ setShowLogin }) => {
                   onChange={onChangeHandler}
                   name="province"
                   value={formData.province}
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4]
-            outline-none focus:border-[#C99658] transition text-[#6D655D]"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#F9F7F4] outline-none focus:border-[#C99658] transition text-[#6D655D]"
                   required
                 >
-                  <option>Select Province</option>
-                  <option value={"Koshi"}>Koshi</option>
-                  <option value={"Madesh"}>Madhesh</option>
-                  <option value={"Bagmati"}>Bagmati</option>
-                  <option value={"Gandaki"}>Gandaki</option>
-                  <option value={"Lumbini"}>Lumbini</option>
-                  <option value={"Karnali"}>Karnali</option>
-                  <option value={"Sudurpaschim"}>Sudurpashchim</option>
+                  <option value="">Select Province</option>
+                  <option value="Koshi">Koshi</option>
+                  <option value="Madesh">Madhesh</option>
+                  <option value="Bagmati">Bagmati</option>
+                  <option value="Gandaki">Gandaki</option>
+                  <option value="Lumbini">Lumbini</option>
+                  <option value="Karnali">Karnali</option>
+                  <option value="Sudurpaschim">Sudurpashchim</option>
                 </select>
               </div>
 
-              {/* Postal Code & Country */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <input
                   type="text"
                   value="Nepal"
                   readOnly
-                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE]
-            bg-[#EFEAE3] text-[#6D655D]"
+                  className="w-full h-11 px-4 rounded-xl border border-[#DED7CE] bg-[#EFEAE3] text-[#6D655D]"
                 />
               </div>
             </div>
           </div>
 
-          {/* ================= CART TOTAL ================= */}
-
           <div className="w-full lg:w-[360px]">
             <div className="sticky top-24 bg-white border border-[#DED7CE] rounded-3xl p-6">
-              {/* Replace with your CartTotal component */}
-
               <CartTotal />
+
               <div className="w-full rounded-xl border border-gray-200 p-4 bg-white flex flex-col">
                 <h3 className="text-lg font-semibold mb-4 text-gray-800">
                   Payment Method
                 </h3>
 
-                <div className=" flex flex-col gap-4">
-                  {/* eSewa */}
+                <div className="flex flex-col gap-4">
                   <div
                     onClick={() => setPayMethod("esewa")}
-                    className={`${payMethod === "esewa" ? "bg-green-100" : ""} flex items-center justify-center gap-3 border rounded-lg p-4 cursor-pointer hover:border-green-500 hover:bg-green-50 transition`}
+                    className={`${
+                      payMethod === "esewa" ? "bg-green-100" : ""
+                    } flex items-center justify-center gap-3 border rounded-lg p-4 cursor-pointer hover:border-green-500 hover:bg-green-50 transition`}
                   >
                     <img
                       src={assets.esewa_logo}
                       alt="eSewa"
-                      className="w-20 object-fill "
+                      className="w-20 object-fill"
                     />
                   </div>
 
-                  {/* Khalti */}
                   <div
                     onClick={() => setPayMethod("khalti")}
-                    className={` ${payMethod === "khalti" ? "bg-purple-100" : ""} flex items-center justify-center gap-3 border rounded-lg p-4 cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition`}
+                    className={`${
+                      payMethod === "khalti" ? "bg-purple-100" : ""
+                    } flex items-center justify-center gap-3 border rounded-lg p-4 cursor-pointer hover:border-purple-500 hover:bg-purple-50 transition`}
                   >
                     <img
                       src={assets.khalti_logo}
@@ -258,10 +279,11 @@ const PlaceOrder = ({ setShowLogin }) => {
                     />
                   </div>
 
-                  {/* Cash on Delivery */}
                   <div
                     onClick={() => setPayMethod("COD")}
-                    className={`${payMethod === "COD" ? "bg-orange-100" : ""} flex items-center justify-center border rounded-lg p-4 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition`}
+                    className={`${
+                      payMethod === "COD" ? "bg-orange-100" : ""
+                    } flex items-center justify-center border rounded-lg p-4 cursor-pointer hover:border-orange-500 hover:bg-orange-50 transition`}
                   >
                     <span className="font-medium text-gray-700">
                       Cash on Delivery
@@ -272,9 +294,7 @@ const PlaceOrder = ({ setShowLogin }) => {
 
               <button
                 type="submit"
-                className="w-full mt-6 py-3 rounded-xl bg-[#231F1C] text-white
-          hover:bg-[#C99658] hover:text-[#231F1C]
-          transition-all duration-300 font-medium"
+                className="w-full mt-6 py-3 rounded-xl bg-[#231F1C] text-white hover:bg-[#C99658] hover:text-[#231F1C] transition-all duration-300 font-medium"
               >
                 Proceed to Payment
               </button>
