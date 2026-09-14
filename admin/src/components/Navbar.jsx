@@ -5,95 +5,141 @@ import axios from "axios";
 import { backendUrl } from "../App";
 import { useNavigate } from "react-router-dom";
 
-const Navbar = ({ setToken }) => {
+const Navbar = ({ setToken, token }) => {
   const navigate = useNavigate();
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
 
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
   const handleLog = () => {
     setToken("");
     localStorage.setItem("token", "");
+    setNotifications([]);
+    setUnreadCount(0);
+    setShowNotifications(false);
   };
 
-  // Convert VAPID public key
-  const urlBase64ToUint8Array = (base64String) => {
-    const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  // ============================================================
+  // GET UNREAD NOTIFICATION COUNT
+  // ============================================================
 
-    const base64 = (base64String + padding)
-      .replace(/-/g, "+")
-      .replace(/_/g, "/");
-
-    const rawData = window.atob(base64);
-    const outputArray = new Uint8Array(rawData.length);
-
-    for (let i = 0; i < rawData.length; ++i) {
-      outputArray[i] = rawData.charCodeAt(i);
-    }
-
-    return outputArray;
-  };
-
-  // Enable browser push notifications
-  const enableNotifications = async () => {
+  const getUnreadCount = async () => {
     try {
-      const permission = await Notification.requestPermission();
-
-      if (permission !== "granted") {
-        console.log("Notification permission denied");
-        return false;
+      if (!token) {
+        setUnreadCount(0);
+        return;
       }
 
-      const registration =
-        await navigator.serviceWorker.register("/service-worker.js");
-
-      console.log("Service worker registered:", registration);
-
-      const readyRegistration = await navigator.serviceWorker.ready;
-
-      let subscription = await readyRegistration.pushManager.getSubscription();
-
-      if (!subscription) {
-        subscription = await readyRegistration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(
-            import.meta.env.VITE_VAPID_PUBLIC_KEY,
-          ),
-        });
-      }
-
-      console.log("Push subscription:", subscription);
-
-      await axios.post(
-        backendUrl + "/api/push/subscribe",
-        subscription.toJSON(),
+      const response = await axios.get(
+        backendUrl + "/api/notification/admin-unread-count",
+        {
+          headers: {
+            token,
+          },
+        },
       );
 
-      console.log("Subscription saved to backend");
-
-      return true;
+      if (response.data.success) {
+        setUnreadCount(response.data.count || 0);
+      }
     } catch (error) {
-      console.log("Notification setup failed:", error);
-      return false;
+      console.log(
+        "GET ADMIN UNREAD COUNT ERROR:",
+        error.response?.data || error.message,
+      );
     }
   };
 
-  // Get unread notification count
-  useEffect(() => {
-    const getUnreadCount = async () => {
-      try {
-        const response = await axios.get(
-          backendUrl + "/api/notification/unread-count",
+  // ============================================================
+  // GET ADMIN NOTIFICATIONS
+  // ============================================================
+
+  const getNotifications = async () => {
+    try {
+      if (!token) {
+        setNotifications([]);
+        return;
+      }
+
+      const response = await axios.get(
+        backendUrl + "/api/notification/admin-list",
+        {
+          headers: {
+            token,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        setNotifications(response.data.notifications || []);
+      }
+    } catch (error) {
+      console.log(
+        "GET ADMIN NOTIFICATIONS ERROR:",
+        error.response?.data || error.message,
+      );
+    }
+  };
+
+  // ============================================================
+  // MARK ADMIN NOTIFICATION AS READ
+  // ============================================================
+
+  const markAsRead = async (notificationId) => {
+    try {
+      if (!token || !notificationId) {
+        return;
+      }
+
+      const response = await axios.post(
+        backendUrl + "/api/notification/admin-read",
+        {
+          notificationId,
+        },
+        {
+          headers: {
+            token,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        setNotifications((prev) =>
+          prev.map((notification) =>
+            notification._id === notificationId
+              ? {
+                  ...notification,
+                  isRead: true,
+                }
+              : notification,
+          ),
         );
 
-        if (response.data.success) {
-          setUnreadCount(response.data.count);
-        }
-      } catch (error) {
-        console.log(error);
+        setUnreadCount((prev) => Math.max(0, prev - 1));
       }
-    };
+    } catch (error) {
+      console.log(
+        "MARK ADMIN NOTIFICATION READ ERROR:",
+        error.response?.data || error.message,
+      );
+    }
+  };
+
+  // ============================================================
+  // LOAD UNREAD COUNT
+  // ============================================================
+
+  useEffect(() => {
+    if (!token) {
+      setUnreadCount(0);
+      setNotifications([]);
+      return;
+    }
 
     getUnreadCount();
 
@@ -102,67 +148,32 @@ const Navbar = ({ setToken }) => {
     }, 10000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [token]);
 
-  // Get notifications
-  const getNotifications = async () => {
-    try {
-      const response = await axios.get(backendUrl + "/api/notification/list");
+  // ============================================================
+  // NOTIFICATION BELL
+  // ============================================================
 
-      if (response.data.success) {
-        setNotifications(response.data.notifications);
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  // Mark notification as read
-  const markAsRead = async (notificationId) => {
-    try {
-      const response = await axios.post(backendUrl + "/api/notification/read", {
-        notificationId,
-      });
-
-      if (response.data.success) {
-        setNotifications((prev) =>
-          prev.map((notification) =>
-            notification._id === notificationId
-              ? { ...notification, isRead: true }
-              : notification,
-          ),
-        );
-
-        setUnreadCount((prev) => Math.max(0, prev - 1));
-      }
-    } catch (error) {
-      console.log(error);
-    }
-  };
-
-  // Notification bell handler
   const notificationHandler = async () => {
-    try {
-      const notification = await enableNotifications();
+    const newState = !showNotifications;
 
-      if (notification) {
-        setShowNotifications((prev) => {
-          const newState = !prev;
+    setShowNotifications(newState);
 
-          if (newState) {
-            getNotifications();
-          }
-
-          return newState;
-        });
-      }
-    } catch (error) {
-      console.log(error);
+    if (newState) {
+      await getNotifications();
+      await getUnreadCount();
     }
   };
 
-  // View / Review order
+  // ============================================================
+  // VIEW NOTIFICATION
+  // ============================================================
+
   const handleNotificationClick = async (notification) => {
+    if (!notification) {
+      return;
+    }
+
     if (!notification.isRead) {
       await markAsRead(notification._id);
     }
@@ -199,91 +210,126 @@ const Navbar = ({ setToken }) => {
         {/* Right Side */}
         <div className="flex shrink-0 items-center gap-2 sm:gap-4 md:gap-6">
           {/* Notifications */}
-          <button
-            onClick={notificationHandler}
-            className="relative rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 hover:text-black"
-          >
-            <FiBell size={22} className="sm:h-6 sm:w-6" />
-
-            {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white sm:text-xs">
-                {unreadCount > 99 ? "99+" : unreadCount}
-              </span>
-            )}
-          </button>
-
-          {/* Notification Dropdown */}
-          {showNotifications && (
-            <div
-              className="
-                absolute
-                right-2
-                top-[60px]
-                z-50
-                w-[calc(100vw-16px)]
-                max-w-96
-                overflow-hidden
-                rounded-xl
-                border
-                border-gray-200
-                bg-white
-                shadow-xl
-                sm:right-5
-                sm:top-[72px]
-                md:right-24
-              "
+          <div className="relative">
+            <button
+              type="button"
+              onClick={notificationHandler}
+              className="relative rounded-lg p-2 text-gray-600 transition hover:bg-gray-100 hover:text-black"
+              aria-label="Notifications"
             >
-              {/* Header */}
-              <div className="border-b px-4 py-3">
-                <h3 className="font-semibold text-gray-800">Notifications</h3>
-              </div>
+              <FiBell size={22} className="sm:h-6 sm:w-6" />
 
-              {/* Notifications */}
-              <div className="max-h-[70vh] overflow-y-auto">
-                {notifications.length === 0 ? (
-                  <p className="p-4 text-sm text-gray-500">No notifications</p>
-                ) : (
-                  notifications.map((notification) => (
-                    <div
-                      key={notification._id}
-                      className={`border-b px-3 py-3 sm:px-4 ${
-                        notification.isRead ? "bg-white" : "bg-gray-50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        {/* Notification Content */}
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-gray-800">
-                            {notification.title}
-                          </p>
+              {unreadCount > 0 && (
+                <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white sm:text-xs">
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </span>
+              )}
+            </button>
 
-                          <p className="mt-1 text-sm leading-5 text-gray-500">
-                            {notification.message}
-                          </p>
+            {/* Notification Dropdown */}
+            {showNotifications && (
+              <div
+                className="
+                  absolute
+                  right-0
+                  top-full
+                  z-50
+                  mt-3
+                  w-[calc(100vw-16px)]
+                  max-w-96
+                  overflow-hidden
+                  rounded-xl
+                  border
+                  border-gray-200
+                  bg-white
+                  shadow-xl
+                "
+              >
+                {/* Header */}
+                <div className="border-b px-4 py-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-gray-800">
+                      Notifications
+                    </h3>
+
+                    {unreadCount > 0 && (
+                      <span className="text-xs font-medium text-gray-500">
+                        {unreadCount} unread
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notifications */}
+                <div className="max-h-[70vh] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <p className="p-4 text-sm text-gray-500">
+                      No notifications
+                    </p>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div
+                        key={notification._id}
+                        className={`border-b px-3 py-3 transition sm:px-4 ${
+                          notification.isRead ? "bg-white" : "bg-gray-50"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          {/* Notification Content */}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              {!notification.isRead && (
+                                <span className="h-2 w-2 shrink-0 rounded-full bg-red-500" />
+                              )}
+
+                              <p
+                                className={`truncate text-sm ${
+                                  notification.isRead
+                                    ? "font-medium"
+                                    : "font-bold"
+                                } text-gray-800`}
+                              >
+                                {notification.title}
+                              </p>
+                            </div>
+
+                            <p className="mt-1 text-sm leading-5 text-gray-500">
+                              {notification.message}
+                            </p>
+
+                            {notification.createdAt && (
+                              <p className="mt-1 text-xs text-gray-400">
+                                {new Date(
+                                  notification.createdAt,
+                                ).toLocaleString()}
+                              </p>
+                            )}
+                          </div>
+
+                          {/* View Order Button */}
+                          {notification.orderId && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleNotificationClick(notification)
+                              }
+                              className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-white transition sm:px-3 ${
+                                notification.isRead
+                                  ? "bg-gray-600 hover:bg-gray-700"
+                                  : "bg-black hover:bg-gray-800"
+                              }`}
+                            >
+                              {notification.isRead ? "Review" : "View"}
+                            </button>
+                          )}
                         </div>
-
-                        {/* View / Review Button */}
-                        {notification.orderId && (
-                          <button
-                            onClick={() =>
-                              handleNotificationClick(notification)
-                            }
-                            className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-white transition sm:px-3 ${
-                              notification.isRead
-                                ? "bg-gray-600 hover:bg-gray-700"
-                                : "bg-black hover:bg-gray-800"
-                            }`}
-                          >
-                            {notification.isRead ? "Review" : "View"}
-                          </button>
-                        )}
                       </div>
-                    </div>
-                  ))
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           {/* Admin */}
           <div className="hidden items-center gap-3 md:flex">
@@ -300,6 +346,7 @@ const Navbar = ({ setToken }) => {
 
           {/* Logout */}
           <button
+            type="button"
             onClick={handleLog}
             className="
               flex

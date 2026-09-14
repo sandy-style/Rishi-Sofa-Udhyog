@@ -11,6 +11,10 @@ import hero1 from "./hero1.jpg";
 import hero2 from "./hero2.jpg";
 import hero3 from "./hero4.jpg";
 import collectionhero from "./collectionhero.jpg";
+import customer1 from "./customer1.png";
+import customer2 from "./customer2.jpg";
+import customer3 from "./customer3.jpg";
+import customer4 from "./customer4.jpg";
 // importing product images
 
 export const assets = {
@@ -27,4 +31,8 @@ export const assets = {
   search_icon,
   esewa_logo,
   khalti_logo,
+  customer1,
+  customer2,
+  customer3,
+  customer4,
 };

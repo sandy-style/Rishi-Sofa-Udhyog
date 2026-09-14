@@ -4,34 +4,35 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import ProductCard from "./ProductCard";
 
-const LatestCollection = () => {
+const Sofa = () => {
   const { products } = useContext(ShopContext);
   const navigate = useNavigate();
 
-  const [latest, setLatest] = useState([]);
+  const [sofas, setSofas] = useState([]);
 
   const sliderRef = useRef(null);
   const animationRef = useRef(null);
   const pausedRef = useRef(false);
 
-  // ================= LATEST PRODUCTS =================
+  // ================= SOFA PRODUCTS =================
 
   useEffect(() => {
     if (!products || products.length === 0) {
-      setLatest([]);
+      setSofas([]);
       return;
     }
 
-    const latestProducts = [...products]
-      .sort((a, b) => {
-        const dateA = new Date(a.date || 0).getTime();
-        const dateB = new Date(b.date || 0).getTime();
+    const sofaProducts = products
+      .filter((item) => {
+        const category = String(item?.category || item?.productCategory || "")
+          .trim()
+          .toLowerCase();
 
-        return dateB - dateA;
+        return category === "sofa" || category === "sofas";
       })
       .slice(0, 8);
 
-    setLatest(latestProducts);
+    setSofas(sofaProducts);
   }, [products]);
 
   // ================= AUTO SLIDER =================
@@ -40,7 +41,7 @@ const LatestCollection = () => {
     const slider = sliderRef.current;
 
     // Don't auto-scroll when there aren't enough products
-    if (!slider || latest.length < 3) return;
+    if (!slider || sofas.length < 3) return;
 
     let lastTime = performance.now();
 
@@ -73,7 +74,7 @@ const LatestCollection = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [latest]);
+  }, [sofas]);
 
   // ================= PAUSE CONTROLS =================
 
@@ -118,7 +119,7 @@ const LatestCollection = () => {
   const handlePrevious = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || sofas.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -141,7 +142,7 @@ const LatestCollection = () => {
   const handleNext = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || sofas.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -162,18 +163,13 @@ const LatestCollection = () => {
   // ================= VIEW MORE =================
 
   const handleViewMore = () => {
-    navigate("/collection?sort=New");
+    navigate("/collection?category=Sofas");
   };
 
   // ================= CARD SIZE =================
-  //
-  // 1 product  -> normal compact width
-  // 2 products -> two cards comfortably
-  // 3+         -> original responsive slider sizing
-  //
 
   const getProductCardClass = () => {
-    if (latest.length === 1) {
+    if (sofas.length === 1) {
       return `
         shrink-0
         w-[82%]
@@ -183,7 +179,7 @@ const LatestCollection = () => {
       `;
     }
 
-    if (latest.length === 2) {
+    if (sofas.length === 2) {
       return `
         shrink-0
         w-[82%]
@@ -260,7 +256,7 @@ const LatestCollection = () => {
       "
     >
       <div className="flex flex-col items-center text-center">
-        {/* Animated Arrow Circle */}
+        {/* Arrow Circle */}
 
         <div
           className="
@@ -291,10 +287,13 @@ const LatestCollection = () => {
               transition-transform
               duration-300
               group-hover:translate-x-1
+
               sm:text-2xl
             "
           />
         </div>
+
+        {/* Heading */}
 
         <h3
           className="
@@ -312,6 +311,8 @@ const LatestCollection = () => {
           View More
         </h3>
 
+        {/* Description */}
+
         <p
           className="
             mt-2
@@ -321,13 +322,13 @@ const LatestCollection = () => {
             text-[#806F62]
           "
         >
-          Explore our newest furniture arrivals
+          Explore our complete collection of elegant sofas
         </p>
       </div>
     </button>
   );
 
-  if (!latest.length) return null;
+  if (!sofas.length) return null;
 
   return (
     <section className="my-12 sm:my-16 lg:my-20">
@@ -381,7 +382,7 @@ const LatestCollection = () => {
                   sm:text-[11px]
                 "
               >
-                Latest Collection
+                Sofa Collection
               </span>
 
               <span className="h-px w-10 bg-[#C8A77F]" />
@@ -405,9 +406,9 @@ const LatestCollection = () => {
                 xl:text-[48px]
               "
             >
-              Freshly Crafted,
+              Comfort Meets,
               <br className="hidden sm:block" />
-              <span className="text-[#8A6B50]"> Made for Living</span>
+              <span className="text-[#8A6B50]"> Timeless Design</span>
             </h2>
 
             {/* Description */}
@@ -428,15 +429,15 @@ const LatestCollection = () => {
                 lg:text-base
               "
             >
-              Discover our newest furniture pieces, combining premium materials,
-              elegant craftsmanship, and thoughtful design to bring comfort and
-              character to every space.
+              Explore beautifully crafted sofas designed to bring exceptional
+              comfort, refined style, and a welcoming character to your living
+              space.
             </p>
           </div>
 
           {/* ================= DESKTOP ARROWS ================= */}
 
-          {latest.length >= 3 && (
+          {sofas.length >= 3 && (
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 type="button"
@@ -464,7 +465,7 @@ const LatestCollection = () => {
                   xl:h-12
                   xl:w-12
                 "
-                aria-label="Previous products"
+                aria-label="Previous sofas"
               >
                 <FiArrowLeft
                   className="
@@ -502,7 +503,7 @@ const LatestCollection = () => {
                   xl:h-12
                   xl:w-12
                 "
-                aria-label="Next products"
+                aria-label="Next sofas"
               >
                 <FiArrowRight
                   className="
@@ -526,7 +527,7 @@ const LatestCollection = () => {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="
-            latest-collection-slider
+            sofa-slider
             flex
             w-full
             gap-4
@@ -543,14 +544,14 @@ const LatestCollection = () => {
             xl:px-10
           "
         >
-          {latest.map((item, index) => renderProduct(item, index))}
+          {sofas.map((item, index) => renderProduct(item, index))}
 
           {renderViewMore()}
         </div>
 
         {/* ================= MOBILE SWIPE HINT ================= */}
 
-        {latest.length >= 2 && (
+        {sofas.length >= 2 && (
           <div
             className="
               mt-2
@@ -580,11 +581,11 @@ const LatestCollection = () => {
 
       <style>
         {`
-          .latest-collection-slider::-webkit-scrollbar {
+          .sofa-slider::-webkit-scrollbar {
             display: none;
           }
 
-          .latest-collection-slider {
+          .sofa-slider {
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-behavior: auto;
@@ -596,4 +597,4 @@ const LatestCollection = () => {
   );
 };
 
-export default LatestCollection;
+export default Sofa;

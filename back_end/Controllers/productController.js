@@ -12,6 +12,89 @@ const allowedCategories = [
   "Tv-units",
 ];
 
+// ============================================================
+// DIMENSION HELPERS
+// ============================================================
+
+const getParsedDimensions = (dimensions) => {
+  const defaultDimensions = {
+    width: null,
+    length: null,
+    depth: null,
+    height: null,
+    leftLength: null,
+    rightLength: null,
+    unit: "cm",
+  };
+
+  if (dimensions === undefined || dimensions === null || dimensions === "") {
+    return defaultDimensions;
+  }
+
+  let parsedDimensions;
+
+  try {
+    parsedDimensions =
+      typeof dimensions === "string" ? JSON.parse(dimensions) : dimensions;
+  } catch (error) {
+    throw new Error("Invalid product dimensions");
+  }
+
+  if (
+    !parsedDimensions ||
+    typeof parsedDimensions !== "object" ||
+    Array.isArray(parsedDimensions)
+  ) {
+    throw new Error("Invalid product dimensions");
+  }
+
+  const numericFields = [
+    "width",
+    "length",
+    "depth",
+    "height",
+    "leftLength",
+    "rightLength",
+  ];
+
+  const cleanedDimensions = {
+    ...defaultDimensions,
+  };
+
+  for (const field of numericFields) {
+    const value = parsedDimensions[field];
+
+    if (value === undefined || value === null || value === "") {
+      cleanedDimensions[field] = null;
+      continue;
+    }
+
+    const numberValue = Number(value);
+
+    if (Number.isNaN(numberValue) || numberValue < 0) {
+      throw new Error(`Invalid ${field} dimension`);
+    }
+
+    cleanedDimensions[field] = numberValue;
+  }
+
+  if (parsedDimensions.unit) {
+    const allowedUnits = ["cm", "in", "ft"];
+
+    if (!allowedUnits.includes(parsedDimensions.unit)) {
+      throw new Error("Invalid dimension unit");
+    }
+
+    cleanedDimensions.unit = parsedDimensions.unit;
+  }
+
+  return cleanedDimensions;
+};
+
+// ============================================================
+// ADD PRODUCT
+// ============================================================
+
 const addProduct = async (req, res) => {
   try {
     const {
@@ -20,13 +103,24 @@ const addProduct = async (req, res) => {
       category,
       price,
       attributes,
-      bestSeller,
+      size,
+      dimensions,
       stock,
       offer,
       material,
     } = req.body;
 
-    if (!name || !description || !category || !price || !material) {
+    // ==============================
+    // VALIDATION
+    // ==============================
+
+    if (
+      !name ||
+      !description ||
+      !category ||
+      price === undefined ||
+      !material
+    ) {
       return res.json({
         success: false,
         message: "Please fill all required product details",
@@ -39,6 +133,17 @@ const addProduct = async (req, res) => {
         message: "Invalid product category",
       });
     }
+
+    if (Number(price) < 0 || Number.isNaN(Number(price))) {
+      return res.json({
+        success: false,
+        message: "Invalid product price",
+      });
+    }
+
+    // ==============================
+    // IMAGES
+    // ==============================
 
     const images = [
       req.files?.image1?.[0],
@@ -64,6 +169,10 @@ const addProduct = async (req, res) => {
       }),
     );
 
+    // ==============================
+    // ATTRIBUTES
+    // ==============================
+
     let parsedAttributes = {};
 
     if (attributes) {
@@ -77,6 +186,31 @@ const addProduct = async (req, res) => {
         });
       }
     }
+
+    // ==============================
+    // SIZE
+    // ==============================
+
+    const parsedSize = size ? String(size).trim() : "";
+
+    // ==============================
+    // DIMENSIONS
+    // ==============================
+
+    let parsedDimensions;
+
+    try {
+      parsedDimensions = getParsedDimensions(dimensions);
+    } catch (error) {
+      return res.json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    // ==============================
+    // OFFER
+    // ==============================
 
     let parsedOffer = {
       isActive: false,
@@ -97,28 +231,100 @@ const addProduct = async (req, res) => {
       }
     }
 
+    // ==============================
+    // OFFER VALIDATION
+    // ==============================
+
+    const offerIsActive =
+      parsedOffer.isActive === true || parsedOffer.isActive === "true";
+
+    const discountType =
+      parsedOffer.discountType === "flat" ? "flat" : "percentage";
+
+    const discountValue = Number(parsedOffer.discountValue || 0);
+
+    if (discountValue < 0 || Number.isNaN(discountValue)) {
+      return res.json({
+        success: false,
+        message: "Invalid discount value",
+      });
+    }
+
+    if (offerIsActive && discountType === "percentage" && discountValue > 100) {
+      return res.json({
+        success: false,
+        message: "Percentage discount cannot exceed 100%",
+      });
+    }
+
+    // ==============================
+    // OFFER END DATE
+    // ==============================
+
+    let offerEndsAt = null;
+
+    if (parsedOffer.offerEndsAt) {
+      const parsedDate = new Date(parsedOffer.offerEndsAt);
+
+      if (Number.isNaN(parsedDate.getTime())) {
+        return res.json({
+          success: false,
+          message: "Invalid offer end date",
+        });
+      }
+
+      offerEndsAt = parsedDate;
+    }
+
+    // ==============================
+    // PRODUCT DATA
+    // ==============================
+
     const productData = {
       name: name.trim(),
+
       description: description.trim(),
+
       category,
+
       price: Number(price),
+
       material: material.trim(),
+
       attributes: parsedAttributes,
+
+      // Selected size
+      size: parsedSize,
+
+      // Actual measurements
+      dimensions: parsedDimensions,
+
       offer: {
-        isActive:
-          parsedOffer.isActive === true || parsedOffer.isActive === "true",
-        discountType:
-          parsedOffer.discountType === "flat" ? "flat" : "percentage",
-        discountValue: Number(parsedOffer.discountValue || 0),
+        isActive: offerIsActive,
+
+        discountType,
+
+        discountValue,
+
         offerTitle: parsedOffer.offerTitle
           ? String(parsedOffer.offerTitle).trim()
           : "",
-        offerEndsAt: parsedOffer.offerEndsAt
-          ? new Date(parsedOffer.offerEndsAt)
-          : null,
+
+        offerEndsAt,
       },
-      bestSeller: bestSeller === true || bestSeller === "true",
+
+      // ==========================================
+      // SALES SYSTEM
+      // ==========================================
+      // New products always start at 0.
+      // This is increased only when an order
+      // becomes Delivered.
+      // ==========================================
+
+      soldCount: 0,
+
       stock: stock === true || stock === "true",
+
       image: imageUrl,
     };
 
@@ -140,6 +346,10 @@ const addProduct = async (req, res) => {
   }
 };
 
+// ============================================================
+// LIST PRODUCTS
+// ============================================================
+
 const listProducts = async (req, res) => {
   try {
     const products = await productModel.find({}).sort({ date: -1 });
@@ -149,7 +359,7 @@ const listProducts = async (req, res) => {
       products,
     });
   } catch (error) {
-    console.log(error);
+    console.log("LIST PRODUCTS ERROR:", error);
 
     res.json({
       success: false,
@@ -157,6 +367,38 @@ const listProducts = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// BEST SELLING PRODUCTS
+// ============================================================
+
+const bestSellingProducts = async (req, res) => {
+  try {
+    const products = await productModel
+      .find({
+        stock: true,
+        soldCount: { $gt: 0 },
+      })
+      .sort({ soldCount: -1 })
+      .limit(8);
+
+    res.json({
+      success: true,
+      products,
+    });
+  } catch (error) {
+    console.log("BEST SELLING PRODUCTS ERROR:", error);
+
+    res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+// ============================================================
+// REMOVE PRODUCT
+// ============================================================
 
 const removeProduct = async (req, res) => {
   try {
@@ -183,7 +425,7 @@ const removeProduct = async (req, res) => {
       message: "Product removed successfully",
     });
   } catch (error) {
-    console.log(error);
+    console.log("REMOVE PRODUCT ERROR:", error);
 
     res.json({
       success: false,
@@ -191,6 +433,10 @@ const removeProduct = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// SINGLE PRODUCT
+// ============================================================
 
 const singleProduct = async (req, res) => {
   try {
@@ -217,7 +463,7 @@ const singleProduct = async (req, res) => {
       product,
     });
   } catch (error) {
-    console.log(error);
+    console.log("SINGLE PRODUCT ERROR:", error);
 
     res.json({
       success: false,
@@ -225,6 +471,10 @@ const singleProduct = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// UPDATE PRODUCT
+// ============================================================
 
 const updateProduct = async (req, res) => {
   try {
@@ -235,7 +485,8 @@ const updateProduct = async (req, res) => {
       category,
       price,
       attributes,
-      bestSeller,
+      size,
+      dimensions,
       stock,
       offer,
       material,
@@ -257,12 +508,20 @@ const updateProduct = async (req, res) => {
       });
     }
 
+    // ==============================
+    // CATEGORY
+    // ==============================
+
     if (category && !allowedCategories.includes(category)) {
       return res.json({
         success: false,
         message: "Invalid product category",
       });
     }
+
+    // ==============================
+    // ATTRIBUTES
+    // ==============================
 
     let parsedAttributes = product.attributes || {};
 
@@ -277,6 +536,33 @@ const updateProduct = async (req, res) => {
         });
       }
     }
+
+    // ==============================
+    // SIZE
+    // ==============================
+
+    if (size !== undefined) {
+      product.size = String(size).trim();
+    }
+
+    // ==============================
+    // DIMENSIONS
+    // ==============================
+
+    if (dimensions !== undefined) {
+      try {
+        product.dimensions = getParsedDimensions(dimensions);
+      } catch (error) {
+        return res.json({
+          success: false,
+          message: error.message,
+        });
+      }
+    }
+
+    // ==============================
+    // OFFER
+    // ==============================
 
     let parsedOffer = product.offer
       ? product.offer.toObject
@@ -301,35 +587,109 @@ const updateProduct = async (req, res) => {
       }
     }
 
+    const offerIsActive =
+      parsedOffer.isActive === true || parsedOffer.isActive === "true";
+
+    const discountType =
+      parsedOffer.discountType === "flat" ? "flat" : "percentage";
+
+    const discountValue = Number(parsedOffer.discountValue || 0);
+
+    if (Number.isNaN(discountValue) || discountValue < 0) {
+      return res.json({
+        success: false,
+        message: "Invalid discount value",
+      });
+    }
+
+    if (offerIsActive && discountType === "percentage" && discountValue > 100) {
+      return res.json({
+        success: false,
+        message: "Percentage discount cannot exceed 100%",
+      });
+    }
+
+    let offerEndsAt = null;
+
+    if (parsedOffer.offerEndsAt) {
+      const parsedDate = new Date(parsedOffer.offerEndsAt);
+
+      if (Number.isNaN(parsedDate.getTime())) {
+        return res.json({
+          success: false,
+          message: "Invalid offer end date",
+        });
+      }
+
+      offerEndsAt = parsedDate;
+    }
+
+    // ==============================
+    // UPDATE BASIC DATA
+    // ==============================
+
     product.name = name?.trim() || product.name;
+
     product.description = description?.trim() || product.description;
+
     product.category = category || product.category;
-    product.price =
-      price !== undefined && price !== "" ? Number(price) : product.price;
+
+    if (price !== undefined && price !== "") {
+      const numericPrice = Number(price);
+
+      if (Number.isNaN(numericPrice) || numericPrice < 0) {
+        return res.json({
+          success: false,
+          message: "Invalid product price",
+        });
+      }
+
+      product.price = numericPrice;
+    }
+
     product.material = material?.trim() || product.material;
 
     product.attributes = parsedAttributes;
 
+    // ==============================
+    // OFFER
+    // ==============================
+
     product.offer = {
-      isActive:
-        parsedOffer.isActive === true || parsedOffer.isActive === "true",
-      discountType: parsedOffer.discountType === "flat" ? "flat" : "percentage",
-      discountValue: Number(parsedOffer.discountValue || 0),
+      isActive: offerIsActive,
+
+      discountType,
+
+      discountValue,
+
       offerTitle: parsedOffer.offerTitle
         ? String(parsedOffer.offerTitle).trim()
         : "",
-      offerEndsAt: parsedOffer.offerEndsAt
-        ? new Date(parsedOffer.offerEndsAt)
-        : null,
+
+      offerEndsAt,
     };
 
-    if (bestSeller !== undefined) {
-      product.bestSeller = bestSeller === true || bestSeller === "true";
-    }
+    // ==========================================
+    // DO NOT UPDATE soldCount HERE
+    // ==========================================
+    //
+    // soldCount belongs to the order system.
+    // Editing a product must NEVER reset or
+    // manually change the number of units sold.
+    //
+    // ==========================================
+
+    // ==============================
+    // STOCK
+    // ==============================
 
     if (stock !== undefined) {
       product.stock = stock === true || stock === "true";
     }
+
+    // ==============================
+    // IMAGES
+    // ==============================
 
     let images = [...(product.image || [])];
 
@@ -365,6 +725,10 @@ const updateProduct = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// ADD REVIEW
+// ============================================================
 
 const addReview = async (req, res) => {
   try {
@@ -492,9 +856,6 @@ const addReview = async (req, res) => {
       date: new Date(),
     };
 
-    // Use $push so Mongoose does not validate
-    // the entire Product document.
-
     await productModel.updateOne(
       { _id: productId },
       {
@@ -517,6 +878,10 @@ const addReview = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// EDIT REVIEW
+// ============================================================
 
 const editReview = async (req, res) => {
   try {
@@ -576,7 +941,7 @@ const editReview = async (req, res) => {
     }
 
     // ==============================
-    // FIND USER'S REVIEW
+    // FIND USER REVIEW
     // ==============================
 
     const review = (product.reviews || []).find(
@@ -591,7 +956,7 @@ const editReview = async (req, res) => {
     }
 
     // ==============================
-    // UPDATE ONLY USER'S REVIEW
+    // UPDATE USER REVIEW
     // ==============================
 
     const result = await productModel.updateOne(
@@ -629,6 +994,10 @@ const editReview = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// ADMIN REPLY TO REVIEW
+// ============================================================
 
 const replyToReview = async (req, res) => {
   try {
@@ -693,7 +1062,7 @@ const replyToReview = async (req, res) => {
       "ADMIN-" + Math.random().toString(36).substring(2, 8).toUpperCase();
 
     // ==============================
-    // UPDATE ONLY THIS REVIEW
+    // UPDATE REVIEW
     // ==============================
 
     const result = await productModel.updateOne(
@@ -733,6 +1102,11 @@ const replyToReview = async (req, res) => {
     });
   }
 };
+
+// ============================================================
+// MY REVIEW
+// ============================================================
+
 const myReview = async (req, res) => {
   try {
     const { productId } = req.body;
@@ -779,8 +1153,13 @@ const myReview = async (req, res) => {
   }
 };
 
+// ============================================================
+// EXPORTS
+// ============================================================
+
 export {
   listProducts,
+  bestSellingProducts,
   removeProduct,
   addProduct,
   singleProduct,

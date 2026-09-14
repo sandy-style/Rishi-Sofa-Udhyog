@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import {
   FiMenu,
@@ -7,10 +7,12 @@ import {
   FiUser,
   FiLogOut,
   FiChevronDown,
+  FiBell,
 } from "react-icons/fi";
 import axios from "axios";
 import { ShopContext } from "../context/shopContext";
 import { backendUrl } from "../App";
+import Notification from "./Notification";
 
 const Navbar = ({ setToken, setShowLogin, token }) => {
   const { getCartCount } = useContext(ShopContext);
@@ -19,9 +21,18 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notificationOpen, setNotificationOpen] = useState(false);
 
   // USER DATA
   const [userData, setUserData] = useState(null);
+
+  // NOTIFICATIONS
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  // REFS
+  const notificationRef = useRef(null);
+  const profileRef = useRef(null);
 
   const cartCount = getCartCount ? getCartCount() : 0;
 
@@ -49,7 +60,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
         setUserData(null);
       }
     } catch (error) {
-      console.log(error);
+      console.log("LOAD USER DATA ERROR:", error);
       setUserData(null);
     }
   };
@@ -57,6 +68,129 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
   useEffect(() => {
     loadUserData();
   }, [token]);
+
+  // =========================================================
+  // GET NOTIFICATIONS
+  // =========================================================
+
+  const loadNotifications = async () => {
+    try {
+      if (!token) {
+        setNotifications([]);
+        return;
+      }
+
+      const response = await axios.get(backendUrl + "/api/notification/list", {
+        headers: {
+          token: token,
+        },
+      });
+
+      if (response.data.success) {
+        setNotifications(response.data.notifications || []);
+      }
+    } catch (error) {
+      console.log("LOAD NOTIFICATIONS ERROR:", error);
+    }
+  };
+
+  // =========================================================
+  // GET UNREAD NOTIFICATION COUNT
+  // =========================================================
+
+  const loadUnreadCount = async () => {
+    try {
+      if (!token) {
+        setUnreadCount(0);
+        return;
+      }
+
+      const response = await axios.get(
+        backendUrl + "/api/notification/unread-count",
+        {
+          headers: {
+            token: token,
+          },
+        },
+      );
+
+      if (response.data.success) {
+        setUnreadCount(response.data.count || 0);
+      }
+    } catch (error) {
+      console.log("LOAD UNREAD COUNT ERROR:", error);
+    }
+  };
+
+  // =========================================================
+  // INITIAL NOTIFICATION LOAD
+  // + AUTO REFRESH EVERY 10 SECONDS
+  // =========================================================
+
+  useEffect(() => {
+    if (!token) {
+      setNotifications([]);
+      setUnreadCount(0);
+      return;
+    }
+
+    // Load immediately
+    loadNotifications();
+    loadUnreadCount();
+
+    // Refresh every 10 seconds
+    const notificationInterval = setInterval(() => {
+      loadNotifications();
+      loadUnreadCount();
+    }, 10000);
+
+    return () => {
+      clearInterval(notificationInterval);
+    };
+  }, [token]);
+
+  // =========================================================
+  // OPEN / CLOSE NOTIFICATIONS
+  // =========================================================
+
+  const toggleNotifications = async () => {
+    const willOpen = !notificationOpen;
+
+    setNotificationOpen(willOpen);
+
+    // Refresh immediately when opening
+    if (willOpen) {
+      await loadNotifications();
+      await loadUnreadCount();
+    }
+
+    setProfileOpen(false);
+  };
+
+  // =========================================================
+  // CLOSE POPUPS WHEN CLICKING OUTSIDE
+  // =========================================================
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (
+        notificationRef.current &&
+        !notificationRef.current.contains(event.target)
+      ) {
+        setNotificationOpen(false);
+      }
+
+      if (profileRef.current && !profileRef.current.contains(event.target)) {
+        setProfileOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   // =========================================================
   // SCROLL
@@ -83,7 +217,10 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
 
     setToken("");
     setUserData(null);
+    setNotifications([]);
+    setUnreadCount(0);
     setProfileOpen(false);
+    setNotificationOpen(false);
 
     navigate("/");
   };
@@ -290,10 +427,13 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             =================================================== */}
 
             {token ? (
-              <div className="relative hidden sm:block">
+              <div ref={profileRef} className="relative hidden sm:block">
                 <button
                   type="button"
-                  onClick={() => setProfileOpen(!profileOpen)}
+                  onClick={() => {
+                    setProfileOpen(!profileOpen);
+                    setNotificationOpen(false);
+                  }}
                   className="
                     flex
                     items-center
@@ -310,7 +450,6 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                     hover:bg-white
                   "
                 >
-                  {/* Avatar */}
                   <span
                     className="
                       flex
@@ -330,7 +469,6 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                     {userData?.name?.charAt(0)?.toUpperCase() || "U"}
                   </span>
 
-                  {/* Name + Email */}
                   <div className="hidden text-left xl:block">
                     <p
                       className="
@@ -392,8 +530,6 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                       shadow-[0_20px_50px_rgba(54,40,30,0.12)]
                     "
                   >
-                    {/* User information */}
-
                     <div
                       className="
                         border-b
@@ -426,8 +562,6 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                       </p>
                     </div>
 
-                    {/* My Orders */}
-
                     <Link
                       to="/orders"
                       onClick={() => setProfileOpen(false)}
@@ -448,8 +582,6 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                     >
                       My Orders
                     </Link>
-
-                    {/* Logout */}
 
                     <button
                       type="button"
@@ -500,6 +632,116 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                 <FiUser className="text-sm" />
                 Login
               </button>
+            )}
+
+            {/* ===================================================
+                NOTIFICATIONS
+            =================================================== */}
+
+            {/* ===================================================
+    NOTIFICATIONS
+=================================================== */}
+
+            {token && (
+              <div
+                ref={notificationRef}
+                className="
+      relative
+      z-[60]
+    "
+              >
+                <button
+                  type="button"
+                  onClick={toggleNotifications}
+                  className="
+        group
+        relative
+        flex
+        h-10
+        w-10
+        items-center
+        justify-center
+        rounded-full
+        border
+        border-[#DCCFC3]
+        bg-white/50
+        text-[#594A40]
+        transition-all
+        duration-300
+
+        hover:border-[#A97849]
+        hover:bg-[#A97849]
+        hover:text-white
+
+        sm:h-11
+        sm:w-11
+      "
+                  aria-label="Notifications"
+                >
+                  <FiBell
+                    className="
+          text-[17px]
+          transition-transform
+          duration-300
+          group-hover:-translate-y-0.5
+        "
+                  />
+
+                  {unreadCount > 0 && (
+                    <span
+                      className="
+            absolute
+            -right-1
+            -top-1
+            flex
+            h-[18px]
+            min-w-[18px]
+            items-center
+            justify-center
+            rounded-full
+            bg-[#A97849]
+            px-1
+            font-manrope
+            text-[8px]
+            font-bold
+            text-white
+            ring-2
+            ring-[#FCFAF7]
+          "
+                    >
+                      {unreadCount > 99 ? "99+" : unreadCount}
+                    </span>
+                  )}
+                </button>
+
+                {notificationOpen && (
+                  <div
+                    className="
+          absolute
+          top-[calc(100%+12px)]
+          
+          /* Mobile */
+          right-[-52px]
+          w-[calc(100vw-24px)]
+          max-w-[380px]
+
+          /* Small screens */
+          sm:right-[-10px]
+          sm:w-[380px]
+
+          /* Large screens */
+          lg:right-0
+
+          z-[100]
+        "
+                  >
+                    <Notification
+                      notifications={notifications}
+                      onClose={() => setNotificationOpen(false)}
+                    />
+                  </div>
+                )}
+              </div>
             )}
 
             {/* ===================================================
@@ -670,8 +912,6 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
             <div className="mt-5">
               {token ? (
                 <>
-                  {/* Mobile user information */}
-
                   <div
                     className="
                       mb-3

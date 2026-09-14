@@ -15,9 +15,7 @@ self.addEventListener("push", (event) => {
     },
   };
 
-  event.waitUntil(
-    self.registration.showNotification(title, options),
-  );
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
@@ -26,9 +24,7 @@ self.addEventListener("notificationclick", (event) => {
   const data = event.notification.data || {};
 
   // Always take the customer to the Orders page
-  const url = data.orderId
-    ? `/orders/${data.orderId}`
-    : "/orders";
+  const url = "/orders";
 
   event.waitUntil(
     clients

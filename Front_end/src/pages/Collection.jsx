@@ -1,11 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState, useContext } from "react";
 import { FiSliders, FiX, FiChevronDown, FiPlus } from "react-icons/fi";
+import { useSearchParams } from "react-router-dom";
 import { ShopContext } from "../context/shopContext";
 import ProductCard from "../components/ProductCard";
 import Search from "../components/Search";
 
 const Collection = () => {
   const { products, search } = useContext(ShopContext);
+
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [showFilter, setShowFilter] = useState(false);
   const [bestSeller, setBestSeller] = useState(false);
@@ -26,6 +29,10 @@ const Collection = () => {
   const [visibleCount, setVisibleCount] = useState(12);
 
   const loadMoreRef = useRef(null);
+
+  // Prevent the URL-sync effect from overwriting browser
+  // back/forward navigation.
+  const applyingUrlRef = useRef(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -61,9 +68,6 @@ const Collection = () => {
 
     return "";
   };
-
-  const isTrue = (value) =>
-    value === true || value === "true" || value === 1 || value === "1";
 
   const getCategoryLabel = (value) => {
     if (!value) return "";
@@ -147,6 +151,140 @@ const Collection = () => {
     );
   };
 
+  /* =========================================================
+     URL PARAMETER -> STATE
+     ========================================================= */
+
+  useEffect(() => {
+    applyingUrlRef.current = true;
+
+    const urlCategory = searchParams.get("category") || "";
+
+    const urlBestSeller = searchParams.get("bestSeller") === "true";
+
+    const urlOffers =
+      searchParams.get("offers") === "true" ||
+      searchParams.get("offer") === "true";
+
+    const urlMaterial = searchParams.get("material") || "";
+    const urlType = searchParams.get("type") || "";
+    const urlStyle = searchParams.get("style") || "";
+    const urlSeat = searchParams.get("seat") || "";
+    const urlSize = searchParams.get("size") || "";
+    const urlMattressType = searchParams.get("mattressType") || "";
+    const urlFirmness = searchParams.get("firmness") || "";
+    const urlThickness = searchParams.get("thickness") || "";
+    const urlPriceRange =
+      searchParams.get("price") || searchParams.get("priceRange") || "";
+
+    const urlSort = searchParams.get("sort") || "Featured";
+
+    setCategory(urlCategory);
+    setBestSeller(urlBestSeller);
+    setOffersOnly(urlOffers);
+    setMaterial(urlMaterial);
+    setType(urlType);
+    setStyle(urlStyle);
+    setSeat(urlSeat);
+    setSize(urlSize);
+    setMattressType(urlMattressType);
+    setFirmness(urlFirmness);
+    setThickness(urlThickness);
+    setPriceRange(urlPriceRange);
+
+    if (["Featured", "LTH", "HTL", "New"].includes(urlSort)) {
+      setSortType(urlSort);
+    } else {
+      setSortType("Featured");
+    }
+
+    // Allow the next state-sync cycle to happen normally.
+    setTimeout(() => {
+      applyingUrlRef.current = false;
+    }, 0);
+  }, [searchParams]);
+
+  /* =========================================================
+     STATE -> URL PARAMETER
+     ========================================================= */
+
+  useEffect(() => {
+    if (applyingUrlRef.current) return;
+
+    const params = new URLSearchParams();
+
+    if (category) {
+      params.set("category", category);
+    }
+
+    if (bestSeller) {
+      params.set("bestSeller", "true");
+    }
+
+    if (offersOnly) {
+      params.set("offers", "true");
+    }
+
+    if (material) {
+      params.set("material", material);
+    }
+
+    if (type) {
+      params.set("type", type);
+    }
+
+    if (style) {
+      params.set("style", style);
+    }
+
+    if (seat) {
+      params.set("seat", seat);
+    }
+
+    if (size) {
+      params.set("size", size);
+    }
+
+    if (mattressType) {
+      params.set("mattressType", mattressType);
+    }
+
+    if (firmness) {
+      params.set("firmness", firmness);
+    }
+
+    if (thickness) {
+      params.set("thickness", thickness);
+    }
+
+    if (priceRange) {
+      params.set("price", priceRange);
+    }
+
+    if (sortType && sortType !== "Featured") {
+      params.set("sort", sortType);
+    }
+
+    setSearchParams(params, {
+      replace: true,
+    });
+  }, [
+    category,
+    bestSeller,
+    offersOnly,
+    material,
+    type,
+    style,
+    seat,
+    size,
+    mattressType,
+    firmness,
+    thickness,
+    priceRange,
+    sortType,
+    setSearchParams,
+  ]);
+
   const categories = useMemo(
     () =>
       uniqueValues(products, getProductCategory).map((value) => ({
@@ -204,10 +342,20 @@ const Collection = () => {
     [categoryProducts],
   );
 
-  const isMattressCategory = normalize(category) === "mattress";
+  // Supports both "Matteress" and "Mattress"
+  const normalizedCategory = normalize(category);
+
+  const isMattressCategory =
+    normalizedCategory === "mattress" ||
+    normalizedCategory === "matteress" ||
+    normalizedCategory === "mattresses";
 
   const isSofaCategory =
-    normalize(category) === "sofa" || normalize(category) === "sofas";
+    normalizedCategory === "sofa" || normalizedCategory === "sofas";
+
+  /* =========================================================
+     RESET INVALID DEPENDENT FILTERS
+     ========================================================= */
 
   useEffect(() => {
     if (
@@ -272,53 +420,68 @@ const Collection = () => {
     thickness,
   ]);
 
+  /* =========================================================
+     FILTER PRODUCTS
+     ========================================================= */
+
   const filteredProducts = useMemo(() => {
     let productCopy = [...products];
 
+    // Dynamic Best Seller
     if (bestSeller) {
-      productCopy = productCopy.filter((item) => isTrue(item.bestSeller));
+      productCopy = productCopy
+        .filter((item) => Number(item.soldCount || 0) > 0)
+        .sort((a, b) => Number(b.soldCount || 0) - Number(a.soldCount || 0));
     }
 
+    // Active offers
     if (offersOnly) {
       productCopy = productCopy.filter((item) => hasActiveOffer(item));
     }
 
+    // Category
     if (category) {
       productCopy = productCopy.filter(
         (item) => getProductCategory(item) === normalize(category),
       );
     }
 
+    // Material
     if (material) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductMaterial(item)) === normalize(material),
       );
     }
 
+    // Type
     if (type) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductType(item)) === normalize(type),
       );
     }
 
+    // Style
     if (style) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductStyle(item)) === normalize(style),
       );
     }
 
+    // Seating
     if (seat) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductSeat(item)) === normalize(seat),
       );
     }
 
+    // Size
     if (size) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductSize(item)) === normalize(size),
       );
     }
 
+    // Mattress type
     if (mattressType) {
       productCopy = productCopy.filter(
         (item) =>
@@ -326,18 +489,21 @@ const Collection = () => {
       );
     }
 
+    // Firmness
     if (firmness) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductFirmness(item)) === normalize(firmness),
       );
     }
 
+    // Thickness
     if (thickness) {
       productCopy = productCopy.filter(
         (item) => normalize(getProductThickness(item)) === normalize(thickness),
       );
     }
 
+    // Price
     if (priceRange) {
       productCopy = productCopy.filter((item) => {
         const price = Number(item.price) || 0;
@@ -361,6 +527,7 @@ const Collection = () => {
       });
     }
 
+    // Search
     if (search) {
       const searchValue = normalize(search);
 
@@ -385,6 +552,7 @@ const Collection = () => {
       });
     }
 
+    // Sort
     switch (sortType) {
       case "HTL":
         productCopy.sort((a, b) => Number(b.price || 0) - Number(a.price || 0));
@@ -401,16 +569,21 @@ const Collection = () => {
       case "Featured":
       default:
         productCopy.sort((a, b) => {
-          const bestA = isTrue(a.bestSeller) ? 1 : 0;
-          const bestB = isTrue(b.bestSeller) ? 1 : 0;
+          const soldA = Number(a.soldCount || 0);
 
-          if (bestA !== bestB) return bestB - bestA;
+          const soldB = Number(b.soldCount || 0);
+
+          if (soldA !== soldB) {
+            return soldB - soldA;
+          }
 
           const offerA = hasActiveOffer(a) ? 1 : 0;
+
           const offerB = hasActiveOffer(b) ? 1 : 0;
 
           return offerB - offerA;
         });
+
         break;
     }
 
@@ -432,6 +605,10 @@ const Collection = () => {
     search,
     sortType,
   ]);
+
+  /* =========================================================
+     RESET PAGINATION WHEN FILTER CHANGES
+     ========================================================= */
 
   useEffect(() => {
     setVisibleCount(12);
@@ -457,12 +634,18 @@ const Collection = () => {
     [filteredProducts, visibleCount],
   );
 
+  /* =========================================================
+     LOAD MORE
+     ========================================================= */
+
   useEffect(() => {
     const target = loadMoreRef.current;
 
     if (!target) return;
 
-    if (visibleCount >= filteredProducts.length) return;
+    if (visibleCount >= filteredProducts.length) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -482,6 +665,10 @@ const Collection = () => {
     return () => observer.disconnect();
   }, [visibleCount, filteredProducts.length]);
 
+  /* =========================================================
+     CLEAR FILTERS
+     ========================================================= */
+
   const clearFilters = () => {
     setBestSeller(false);
     setOffersOnly(false);
@@ -495,6 +682,9 @@ const Collection = () => {
     setFirmness("");
     setThickness("");
     setPriceRange("");
+    setSortType("Featured");
+
+    setSearchParams({}, { replace: true });
   };
 
   const handleFilterChange = (setter, value) => {
@@ -526,14 +716,11 @@ const Collection = () => {
       border
       px-4
       py-2
-
       font-beautify
       text-xs
       font-medium
-
       transition-all
       duration-200
-
       ${
         active
           ? "border-[#80634B] bg-[#80634B] text-white shadow-sm"
@@ -734,8 +921,11 @@ const Collection = () => {
                 "
               >
                 <option value="Featured">Featured</option>
+
                 <option value="LTH">Price: Low to High</option>
+
                 <option value="HTL">Price: High to Low</option>
+
                 <option value="New">Newest</option>
               </select>
 
@@ -756,6 +946,7 @@ const Collection = () => {
         </div>
       </section>
 
+      {/* FILTER PANEL */}
       <section className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8">
         <div
           className={`
@@ -792,6 +983,7 @@ const Collection = () => {
                 xl:grid-cols-4
               "
             >
+              {/* CATEGORY */}
               <div>
                 <p
                   className="
@@ -814,6 +1006,7 @@ const Collection = () => {
                 )}
               </div>
 
+              {/* COLLECTION */}
               <div>
                 <p
                   className="
@@ -852,6 +1045,7 @@ const Collection = () => {
                 </div>
               </div>
 
+              {/* MATERIAL */}
               {materials.length > 0 && (
                 <div>
                   <p
@@ -872,6 +1066,7 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* TYPE */}
               {types.length > 0 && (
                 <div>
                   <p
@@ -892,6 +1087,7 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* STYLE */}
               {styles.length > 0 && (
                 <div>
                   <p
@@ -912,18 +1108,19 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* SEATING */}
               {seats.length > 0 && isSofaCategory && (
                 <div>
                   <p
                     className="
-                      mb-4
-                      font-manrope
-                      text-xs
-                      font-extrabold
-                      uppercase
-                      tracking-[0.16em]
-                      text-[#80634B]
-                    "
+                        mb-4
+                        font-manrope
+                        text-xs
+                        font-extrabold
+                        uppercase
+                        tracking-[0.16em]
+                        text-[#80634B]
+                      "
                   >
                     Seating
                   </p>
@@ -932,6 +1129,7 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* SIZE */}
               {sizes.length > 0 && (
                 <div>
                   <p
@@ -952,18 +1150,19 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* MATTRESS TYPE */}
               {isMattressCategory && mattressTypes.length > 0 && (
                 <div>
                   <p
                     className="
-                      mb-4
-                      font-manrope
-                      text-xs
-                      font-extrabold
-                      uppercase
-                      tracking-[0.16em]
-                      text-[#80634B]
-                    "
+                        mb-4
+                        font-manrope
+                        text-xs
+                        font-extrabold
+                        uppercase
+                        tracking-[0.16em]
+                        text-[#80634B]
+                      "
                   >
                     Mattress Type
                   </p>
@@ -976,18 +1175,19 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* FIRMNESS */}
               {isMattressCategory && firmnessOptions.length > 0 && (
                 <div>
                   <p
                     className="
-                      mb-4
-                      font-manrope
-                      text-xs
-                      font-extrabold
-                      uppercase
-                      tracking-[0.16em]
-                      text-[#80634B]
-                    "
+                        mb-4
+                        font-manrope
+                        text-xs
+                        font-extrabold
+                        uppercase
+                        tracking-[0.16em]
+                        text-[#80634B]
+                      "
                   >
                     Firmness
                   </p>
@@ -996,18 +1196,19 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* THICKNESS */}
               {isMattressCategory && thicknessOptions.length > 0 && (
                 <div>
                   <p
                     className="
-                      mb-4
-                      font-manrope
-                      text-xs
-                      font-extrabold
-                      uppercase
-                      tracking-[0.16em]
-                      text-[#80634B]
-                    "
+                        mb-4
+                        font-manrope
+                        text-xs
+                        font-extrabold
+                        uppercase
+                        tracking-[0.16em]
+                        text-[#80634B]
+                      "
                   >
                     Thickness
                   </p>
@@ -1020,6 +1221,7 @@ const Collection = () => {
                 </div>
               )}
 
+              {/* PRICE */}
               <div>
                 <p
                   className="
@@ -1095,6 +1297,7 @@ const Collection = () => {
         </div>
       </section>
 
+      {/* ACTIVE FILTERS */}
       {activeFilterCount > 0 && (
         <section className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8">
           <div className="mt-6 flex flex-wrap items-center gap-2">
@@ -1313,8 +1516,11 @@ const Collection = () => {
                 "
               >
                 {priceRange === "under25" && "Under 25K"}
+
                 {priceRange === "25to50" && "25K – 50K"}
+
                 {priceRange === "50to100" && "50K – 1L"}
+
                 {priceRange === "above100" && "1L+"}
               </span>
             )}
@@ -1322,6 +1528,7 @@ const Collection = () => {
         </section>
       )}
 
+      {/* PRODUCTS */}
       <section className="mx-auto max-w-[1500px] px-3 sm:px-5 lg:px-8">
         {visibleProducts.length > 0 ? (
           <>
@@ -1352,7 +1559,7 @@ const Collection = () => {
                   description={item.description}
                   offer={item.offer}
                   stock={item.stock}
-                  bestSeller={item.bestSeller}
+                  bestSeller={Number(item.soldCount || 0) > 0}
                   category={item.category}
                 />
               ))}

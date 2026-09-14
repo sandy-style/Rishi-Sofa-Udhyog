@@ -11,9 +11,9 @@ const Orders = ({ token }) => {
 
   const [pendingCount, setPendingCount] = useState(0);
   const [processingCount, setProcessingCount] = useState(0);
-  const [outForDelieveryCount, setOutForDelieveryCount] = useState(0);
+  const [outForDeliveryCount, setOutForDeliveryCount] = useState(0);
   const [cancelledCount, setCancelledCount] = useState(0);
-  const [delieveredCount, setDelieveredCount] = useState(0);
+  const [deliveredCount, setDeliveredCount] = useState(0);
 
   const [activeFilter, setActiveFilter] = useState("All");
   const [showCustomerInfo, setShowCustomerInfo] = useState(null);
@@ -79,12 +79,12 @@ const Orders = ({ token }) => {
           sortedOrders.filter((item) => item.status === "Processing").length,
         );
 
-        setOutForDelieveryCount(
-          sortedOrders.filter((item) => item.status === "Out for Delievery")
+        setOutForDeliveryCount(
+          sortedOrders.filter((item) => item.status === "Out for Delivery")
             .length,
         );
 
-        setDelieveredCount(
+        setDeliveredCount(
           sortedOrders.filter((item) => item.status === "Delivered").length,
         );
 
@@ -194,7 +194,7 @@ const Orders = ({ token }) => {
       case "Shipped":
         return "bg-indigo-50 text-indigo-700 border border-indigo-200";
 
-      case "Out for Delievery":
+      case "Out for Delivery":
         return "bg-orange-50 text-orange-700 border border-orange-200";
 
       case "Cancelled":
@@ -333,14 +333,14 @@ const Orders = ({ token }) => {
 
               <FilterCard
                 title="Delivery"
-                count={outForDelieveryCount}
-                filter="Out for Delievery"
+                count={outForDeliveryCount}
+                filter="Out for Delivery"
                 icon="→"
               />
 
               <FilterCard
                 title="Delivered"
-                count={delieveredCount}
+                count={deliveredCount}
                 filter="Delivered"
                 icon="✓"
               />
@@ -371,9 +371,7 @@ const Orders = ({ token }) => {
             <p className="text-xs text-gray-500">
               Showing{" "}
               <span className="font-semibold text-gray-900">
-                {activeFilter === "Out for Delievery"
-                  ? "Out for Delivery"
-                  : activeFilter}
+                {activeFilter}
               </span>{" "}
               orders
             </p>
@@ -496,9 +494,7 @@ const Orders = ({ token }) => {
                             ${getStatusClass(order.status)}
                           `}
                         >
-                          {order.status === "Out for Delievery"
-                            ? "Out for Delivery"
-                            : order.status}
+                          {order.status}
                         </span>
                       </div>
 
@@ -506,7 +502,7 @@ const Orders = ({ token }) => {
 
                       <select
                         onChange={(e) => orderStatusHandler(e, order._id)}
-                        defaultValue={order.status}
+                        value={order.status}
                         className="
                           w-full
                           cursor-pointer
@@ -533,7 +529,7 @@ const Orders = ({ token }) => {
 
                         <option value="Shipped">Shipped</option>
 
-                        <option value="Out for Delievery">
+                        <option value="Out for Delivery">
                           Out for Delivery
                         </option>
 

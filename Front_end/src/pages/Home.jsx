@@ -4,6 +4,11 @@ import { FiArrowUp } from "react-icons/fi";
 import Hero from "../components/Hero";
 import BestSellers from "../components/BestSellers";
 import LatestCollection from "../components/LatestCollection";
+import Almirah from "../components/Almirah";
+import Beds from "../components/Beds";
+import TablesTvunits from "../components/TablesTvunits";
+import Sofa from "../components/Sofa";
+import CustomerReviews from "../components/CustomerReviews";
 
 const Home = () => {
   const [showTopButton, setShowTopButton] = useState(false);
@@ -41,6 +46,14 @@ const Home = () => {
 
       <LatestCollection />
 
+      <Sofa />
+      <Almirah />
+
+      <Beds />
+
+      <TablesTvunits />
+
+      <CustomerReviews />
       {/* ================= GO TO TOP ================= */}
 
       <button

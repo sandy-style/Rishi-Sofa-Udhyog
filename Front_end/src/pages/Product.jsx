@@ -33,17 +33,9 @@ const Product = ({ token, setShowLogin }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
 
-  // =====================================================
-  // REVIEW / ORDER STATE
-  // =====================================================
-
   const [deliveredOrder, setDeliveredOrder] = useState(null);
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [hasMyReview, setHasMyReview] = useState(false);
-
-  // =====================================================
-  // GET USER ID FROM TOKEN
-  // =====================================================
 
   const getUserIdFromToken = (tokenValue) => {
     try {
@@ -56,10 +48,6 @@ const Product = ({ token, setShowLogin }) => {
       return null;
     }
   };
-
-  // =====================================================
-  // GET PRODUCT
-  // =====================================================
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -77,17 +65,9 @@ const Product = ({ token, setShowLogin }) => {
     }
   }, [products, productId]);
 
-  // =====================================================
-  // GET CART
-  // =====================================================
-
   useEffect(() => {
     getProductsFromCart();
   }, [productId]);
-
-  // =====================================================
-  // CHECK DELIVERED ORDER
-  // =====================================================
 
   useEffect(() => {
     const checkDeliveredOrder = async () => {
@@ -143,10 +123,6 @@ const Product = ({ token, setShowLogin }) => {
     checkDeliveredOrder();
   }, [token, productId]);
 
-  // =====================================================
-  // CHECK IF USER ALREADY REVIEWED
-  // =====================================================
-
   useEffect(() => {
     if (!token || !productData?.reviews) {
       setHasMyReview(false);
@@ -167,29 +143,18 @@ const Product = ({ token, setShowLogin }) => {
     setHasMyReview(myReview);
   }, [token, productData]);
 
-  // =====================================================
-  // STOCK
-  // =====================================================
-
   const isInStock =
     productData?.stock === true ||
     productData?.stock === "true" ||
     productData?.stock === 1 ||
     productData?.stock === "1";
 
-  // =====================================================
-  // BEST SELLER
-  // =====================================================
-
   const isBestSeller =
+    productData?.soldCount > 0 ||
     productData?.bestSeller === true ||
     productData?.bestSeller === "true" ||
     productData?.bestSeller === 1 ||
     productData?.bestSeller === "1";
-
-  // =====================================================
-  // OFFER
-  // =====================================================
 
   const offerIsActive =
     productData?.offer?.isActive === true ||
@@ -218,15 +183,12 @@ const Product = ({ token, setShowLogin }) => {
   if (isOfferActive) {
     if (discountType === "percentage") {
       discountPercentage = Math.min(100, discountValue);
-
       discountAmount = (originalPrice * discountPercentage) / 100;
-
       finalPrice = originalPrice - discountAmount;
     }
 
     if (discountType === "flat") {
       discountAmount = Math.min(originalPrice, discountValue);
-
       finalPrice = originalPrice - discountAmount;
 
       discountPercentage =
@@ -238,19 +200,11 @@ const Product = ({ token, setShowLogin }) => {
     finalPrice = Math.max(0, finalPrice);
   }
 
-  // =====================================================
-  // CATEGORY
-  // =====================================================
-
   const formattedCategory = productData?.category
     ? String(productData.category)
         .replace(/-/g, " ")
         .replace(/\b\w/g, (letter) => letter.toUpperCase())
     : "";
-
-  // =====================================================
-  // REVIEWS
-  // =====================================================
 
   const reviews = Array.isArray(productData?.reviews)
     ? productData.reviews
@@ -284,10 +238,6 @@ const Product = ({ token, setShowLogin }) => {
     });
   }, [reviews, reviewCount]);
 
-  // =====================================================
-  // REVIEW DATE
-  // =====================================================
-
   const formatReviewDate = (date) => {
     if (!date) return "Recently";
 
@@ -304,10 +254,6 @@ const Product = ({ token, setShowLogin }) => {
     });
   };
 
-  // =====================================================
-  // PRODUCT DETAILS
-  // =====================================================
-
   const productDetails = useMemo(() => {
     if (!productData) return [];
 
@@ -315,80 +261,99 @@ const Product = ({ token, setShowLogin }) => {
 
     const category = String(productData.category || "").toLowerCase();
 
+    const attributes =
+      productData.attributes && typeof productData.attributes === "object"
+        ? productData.attributes
+        : {};
+
+    const addDetail = (label, value) => {
+      if (
+        value !== undefined &&
+        value !== null &&
+        String(value).trim() !== ""
+      ) {
+        details.push([label, value]);
+      }
+    };
+
     if (category === "matteress" || category === "mattress") {
-      if (productData.mattressType) {
-        details.push(["Mattress Type", productData.mattressType]);
-      }
-
-      if (productData.size) {
-        details.push(["Size", productData.size]);
-      }
-
-      if (productData.thickness) {
-        details.push(["Thickness", productData.thickness]);
-      }
-
-      if (productData.firmness) {
-        details.push(["Firmness", productData.firmness]);
-      }
-
-      if (productData.material) {
-        details.push(["Material", productData.material]);
-      }
-
-      if (productData.color) {
-        details.push(["Color", productData.color]);
-      }
-
-      if (productData.style) {
-        details.push(["Style", productData.style]);
-      }
-
-      return details;
+      addDetail("Mattress Type", attributes.mattressType);
+      addDetail("Size", productData.size || attributes.size);
+      addDetail("Thickness", attributes.thickness);
+      addDetail("Firmness", attributes.firmness);
+      addDetail("Material", productData.material);
+      addDetail("Color", attributes.color);
+      addDetail("Style", attributes.style);
+    } else {
+      addDetail("Seating", attributes.seating || productData.seating);
+      addDetail("Size", productData.size || attributes.size);
+      addDetail("Material", productData.material);
+      addDetail("Color", attributes.color);
+      addDetail("Style", attributes.style);
     }
 
-    if (productData.seating) {
-      details.push(["Seating", productData.seating]);
-    }
+    const dimensions = productData.dimensions;
 
-    if (productData.material) {
-      details.push(["Material", productData.material]);
-    }
+    if (dimensions && typeof dimensions === "object") {
+      const unit = dimensions.unit || "cm";
 
-    if (productData.color) {
-      details.push(["Color", productData.color]);
-    }
+      addDetail(
+        "Width",
+        dimensions.width !== null &&
+          dimensions.width !== undefined &&
+          dimensions.width !== ""
+          ? `${dimensions.width} ${unit}`
+          : null,
+      );
 
-    if (productData.style) {
-      details.push(["Style", productData.style]);
-    }
+      addDetail(
+        "Length",
+        dimensions.length !== null &&
+          dimensions.length !== undefined &&
+          dimensions.length !== ""
+          ? `${dimensions.length} ${unit}`
+          : null,
+      );
 
-    if (productData.size) {
-      details.push(["Size", productData.size]);
-    }
+      addDetail(
+        "Depth",
+        dimensions.depth !== null &&
+          dimensions.depth !== undefined &&
+          dimensions.depth !== ""
+          ? `${dimensions.depth} ${unit}`
+          : null,
+      );
 
-    if (productData.height) {
-      details.push(["Height", productData.height]);
-    }
+      addDetail(
+        "Height",
+        dimensions.height !== null &&
+          dimensions.height !== undefined &&
+          dimensions.height !== ""
+          ? `${dimensions.height} ${unit}`
+          : null,
+      );
 
-    if (productData.width) {
-      details.push(["Width", productData.width]);
-    }
+      addDetail(
+        "Left Length",
+        dimensions.leftLength !== null &&
+          dimensions.leftLength !== undefined &&
+          dimensions.leftLength !== ""
+          ? `${dimensions.leftLength} ${unit}`
+          : null,
+      );
 
-    if (productData.length) {
-      details.push(["Length", productData.length]);
-    }
-
-    if (productData.weight) {
-      details.push(["Weight", productData.weight]);
+      addDetail(
+        "Right Length",
+        dimensions.rightLength !== null &&
+          dimensions.rightLength !== undefined &&
+          dimensions.rightLength !== ""
+          ? `${dimensions.rightLength} ${unit}`
+          : null,
+      );
     }
 
     return details;
   }, [productData]);
-
-  // =====================================================
-  // ADD TO CART
-  // =====================================================
 
   const handleAddToCart = () => {
     if (!isInStock) return;
@@ -402,10 +367,6 @@ const Product = ({ token, setShowLogin }) => {
       addToCart(productId, token);
     }
   };
-
-  // =====================================================
-  // IMAGE NAVIGATION
-  // =====================================================
 
   const handlePreviousImage = () => {
     if (!productData?.image?.length) return;
@@ -429,10 +390,6 @@ const Product = ({ token, setShowLogin }) => {
     setImage(productData.image[nextIndex]);
   };
 
-  // =====================================================
-  // QUANTITY
-  // =====================================================
-
   const handleQuantityChange = (type) => {
     if (type === "increase") {
       setQuantity((prev) => Math.min(prev + 1, 10));
@@ -440,10 +397,6 @@ const Product = ({ token, setShowLogin }) => {
       setQuantity((prev) => Math.max(prev - 1, 1));
     }
   };
-
-  // =====================================================
-  // REVIEW ACTION
-  // =====================================================
 
   const handleReviewAction = () => {
     if (!token) {
@@ -458,28 +411,14 @@ const Product = ({ token, setShowLogin }) => {
     setShowReviewModal(true);
   };
 
-  // =====================================================
-  // REVIEW MODAL CLOSE
-  // =====================================================
-
   const handleCloseReview = () => {
     setShowReviewModal(false);
   };
 
-  // =====================================================
-  // REVIEW SUCCESS
-  // =====================================================
-
   const handleReviewSuccess = () => {
     setShowReviewModal(false);
-
-    // Reload the page so the latest review is immediately visible
     window.location.reload();
   };
-
-  // =====================================================
-  // LOADING
-  // =====================================================
 
   if (!productData) {
     return (
@@ -489,17 +428,11 @@ const Product = ({ token, setShowLogin }) => {
 
           <div className="space-y-5">
             <div className="h-4 w-32 rounded-full bg-[#F1ECE6]" />
-
             <div className="h-12 w-3/4 rounded-xl bg-[#F1ECE6]" />
-
             <div className="h-6 w-40 rounded-full bg-[#F1ECE6]" />
-
             <div className="h-10 w-48 rounded-xl bg-[#F1ECE6]" />
-
             <div className="h-24 rounded-xl bg-[#F1ECE6]" />
-
             <div className="h-16 rounded-xl bg-[#F1ECE6]" />
-
             <div className="h-14 rounded-xl bg-[#F1ECE6]" />
           </div>
         </div>
@@ -507,17 +440,9 @@ const Product = ({ token, setShowLogin }) => {
     );
   }
 
-  // =====================================================
-  // MAIN
-  // =====================================================
-
   return (
     <main className="border-t border-[#E9DED2] bg-[#FCFAF7]">
       <div className="mx-auto max-w-[1550px] px-4 pb-16 pt-6 sm:px-6 sm:pb-20 sm:pt-8 lg:px-8 xl:px-10">
-        {/* =================================================
-            BREADCRUMB
-        ================================================= */}
-
         <div className="font-beautify mb-6 flex flex-wrap items-center gap-2 text-[10px] uppercase tracking-[0.16em] text-[#9A8878] sm:mb-8 sm:text-[11px]">
           <Link to="/" className="transition-colors hover:text-[#634936]">
             Home
@@ -537,19 +462,9 @@ const Product = ({ token, setShowLogin }) => {
           <span className="truncate text-[#634936]">{productData.name}</span>
         </div>
 
-        {/* =================================================
-            PRODUCT AREA
-        ================================================= */}
-
         <div className="grid gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(420px,0.95fr)] lg:gap-12 xl:grid-cols-[minmax(0,1.08fr)_minmax(500px,0.92fr)] xl:gap-16">
-          {/* =================================================
-              LEFT - PRODUCT IMAGES
-          ================================================= */}
-
           <section className="min-w-0">
             <div className="flex flex-col gap-3 sm:flex-row">
-              {/* THUMBNAILS */}
-
               <div className="order-2 flex w-full gap-2 overflow-x-auto pb-1 sm:order-1 sm:w-[92px] sm:flex-col sm:overflow-y-auto sm:overflow-x-hidden sm:pb-0 lg:w-[100px]">
                 {productData.image?.map((item, index) => (
                   <button
@@ -579,8 +494,6 @@ const Product = ({ token, setShowLogin }) => {
                 ))}
               </div>
 
-              {/* MAIN IMAGE */}
-
               <div className="order-1 min-w-0 flex-1 sm:order-2">
                 <div className="relative overflow-hidden rounded-[20px] border border-[#E6DCD1] bg-[#F3EEE8] shadow-[0_18px_50px_rgba(73,51,35,0.07)] sm:rounded-[24px] lg:rounded-[28px]">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.9),transparent_65%)]" />
@@ -591,8 +504,6 @@ const Product = ({ token, setShowLogin }) => {
                       alt={productData.name}
                       className="h-full max-h-[560px] w-full object-contain drop-shadow-[0_24px_28px_rgba(48,35,26,0.13)] transition-transform duration-500 hover:scale-[1.025]"
                     />
-
-                    {/* IMAGE ARROWS */}
 
                     {productData.image?.length > 1 && (
                       <>
@@ -616,8 +527,6 @@ const Product = ({ token, setShowLogin }) => {
                       </>
                     )}
 
-                    {/* OFFER BADGE */}
-
                     {isOfferActive && (
                       <div className="absolute left-2 top-2 sm:left-5 sm:top-5">
                         <div className="flex items-center gap-1 rounded-full bg-[#B91C1C] px-2 py-1 text-white shadow-[0_6px_15px_rgba(127,29,29,0.22)] sm:gap-1.5 sm:px-4 sm:py-2">
@@ -630,8 +539,6 @@ const Product = ({ token, setShowLogin }) => {
                       </div>
                     )}
 
-                    {/* OUT OF STOCK */}
-
                     {!isInStock && (
                       <div className="absolute inset-0 flex items-center justify-center bg-[#30231B]/20 backdrop-blur-[2px]">
                         <span className="font-beautify rounded-full bg-white px-4 py-2 text-[9px] font-bold uppercase tracking-[0.14em] text-[#634936] shadow-xl sm:px-5 sm:py-2.5 sm:text-[10px]">
@@ -640,8 +547,6 @@ const Product = ({ token, setShowLogin }) => {
                       </div>
                     )}
                   </div>
-
-                  {/* IMAGE DOTS */}
 
                   <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-white/70 bg-white/80 px-3 py-1.5 backdrop-blur-md sm:bottom-5">
                     {productData.image?.map((_, index) => (
@@ -666,13 +571,7 @@ const Product = ({ token, setShowLogin }) => {
             </div>
           </section>
 
-          {/* =================================================
-              RIGHT - PRODUCT INFORMATION
-          ================================================= */}
-
           <section className="min-w-0 lg:pt-2">
-            {/* CATEGORY + BEST SELLER */}
-
             <div className="flex flex-wrap items-center gap-2">
               {formattedCategory && (
                 <span className="font-beautify rounded-full bg-[#EEE5DB] px-3 py-1.5 text-[8px] font-bold uppercase tracking-[0.14em] text-[#80634B] sm:px-4 sm:text-[10px]">
@@ -688,8 +587,6 @@ const Product = ({ token, setShowLogin }) => {
               )}
             </div>
 
-            {/* OFFER TITLE */}
-
             {isOfferActive && productData.offer?.offerTitle && (
               <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-[10px] border border-[#E7C8C3] bg-[#FFF6F4] px-3 py-2 sm:px-4">
                 <FiTag className="shrink-0 text-sm text-[#B91C1C]" />
@@ -700,15 +597,9 @@ const Product = ({ token, setShowLogin }) => {
               </div>
             )}
 
-            {/* PRODUCT NAME */}
-
             <h1 className="mt-4 max-w-[760px] font-serif text-[34px] font-medium leading-[1.03] tracking-[-0.045em] text-[#30231B] sm:mt-5 sm:text-[44px] md:text-[50px] lg:text-[54px] xl:text-[60px]">
               {productData.name}
             </h1>
-
-            {/* =================================================
-                RATING SUMMARY
-            ================================================= */}
 
             <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-[#E7DDD3] pb-5">
               <div className="flex items-center gap-1">
@@ -749,10 +640,6 @@ const Product = ({ token, setShowLogin }) => {
               </button>
             </div>
 
-            {/* =================================================
-                PRICE
-            ================================================= */}
-
             <div className="mt-6 border-b border-[#E7DDD3] pb-6 sm:mt-7 sm:pb-7">
               <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.2em] text-[#A18C79] sm:text-[10px]">
                 {isOfferActive ? "Special Price" : "Price"}
@@ -787,10 +674,6 @@ const Product = ({ token, setShowLogin }) => {
               )}
             </div>
 
-            {/* =================================================
-                DESCRIPTION
-            ================================================= */}
-
             {productData.description && (
               <div className="mt-6 sm:mt-7">
                 <p className="font-beautify text-xs leading-6 text-[#71655D] sm:text-sm sm:leading-6">
@@ -798,10 +681,6 @@ const Product = ({ token, setShowLogin }) => {
                 </p>
               </div>
             )}
-
-            {/* =================================================
-                PRODUCT DETAILS
-            ================================================= */}
 
             <div className="mt-7 sm:mt-8">
               <div className="mb-4">
@@ -839,10 +718,6 @@ const Product = ({ token, setShowLogin }) => {
                 </div>
               )}
             </div>
-
-            {/* =================================================
-                QUANTITY + CART
-            ================================================= */}
 
             <div className="mt-7 border-t border-[#E7DDD3] pt-6 sm:mt-8 sm:pt-7">
               <div className="flex items-center justify-between">
@@ -893,8 +768,6 @@ const Product = ({ token, setShowLogin }) => {
                 </div>
               </div>
 
-              {/* ADD TO CART */}
-
               <button
                 type="button"
                 onClick={handleAddToCart}
@@ -923,18 +796,10 @@ const Product = ({ token, setShowLogin }) => {
           </section>
         </div>
 
-        {/* =================================================
-            CUSTOMER REVIEWS
-        ================================================= */}
-
         <section
           id="reviews"
           className="mt-16 border-t border-[#E7DDD3] pt-10 sm:mt-20 sm:pt-14"
         >
-          {/* =================================================
-              HEADER
-          ================================================= */}
-
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.22em] text-[#9A795B]">
@@ -952,8 +817,6 @@ const Product = ({ token, setShowLogin }) => {
             </div>
 
             <div className="flex flex-wrap items-center gap-3 self-start lg:self-auto">
-              {/* REVIEW COUNT */}
-
               {reviewCount > 0 && (
                 <div className="flex items-center gap-2 rounded-full border border-[#E4D8CC] bg-[#F8F3ED] px-4 py-2">
                   <FiMessageCircle className="text-sm text-[#8A684C]" />
@@ -963,10 +826,6 @@ const Product = ({ token, setShowLogin }) => {
                   </span>
                 </div>
               )}
-
-              {/* =================================================
-                  SINGLE REVIEW BUTTON
-              ================================================= */}
 
               {token && deliveredOrder && (
                 <button
@@ -982,15 +841,9 @@ const Product = ({ token, setShowLogin }) => {
             </div>
           </div>
 
-          {/* =================================================
-              REVIEW SUMMARY
-          ================================================= */}
-
           {reviewCount > 0 ? (
             <>
               <div className="mt-8 grid gap-5 lg:grid-cols-[280px_minmax(0,1fr)]">
-                {/* OVERALL RATING */}
-
                 <div className="rounded-[22px] border border-[#E5D9CE] bg-[#FBF8F4] p-6 sm:p-7">
                   <p className="font-beautify text-[9px] font-bold uppercase tracking-[0.18em] text-[#A18C79]">
                     Overall Rating
@@ -1026,8 +879,6 @@ const Product = ({ token, setShowLogin }) => {
                     {reviewCount === 1 ? "experience" : "experiences"}.
                   </p>
                 </div>
-
-                {/* RATING DISTRIBUTION */}
 
                 <div className="rounded-[22px] border border-[#E5D9CE] bg-white p-6 sm:p-7">
                   <div>
@@ -1069,10 +920,6 @@ const Product = ({ token, setShowLogin }) => {
                 </div>
               </div>
 
-              {/* =================================================
-                  REVIEW LIST
-              ================================================= */}
-
               <div className="mt-8">
                 <div className="mb-4">
                   <p className="font-manrope text-[10px] font-bold uppercase tracking-[0.16em] text-[#634936]">
@@ -1105,8 +952,6 @@ const Product = ({ token, setShowLogin }) => {
                         key={review._id || `${review.user}-${index}`}
                         className="rounded-[20px] border border-[#E5D9CE] bg-white p-5 transition-all duration-300 hover:border-[#D4C1AF] hover:shadow-[0_12px_30px_rgba(73,51,35,0.06)] sm:p-6"
                       >
-                        {/* REVIEW HEADER */}
-
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                           <div className="flex min-w-0 items-center gap-3">
                             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EEE5DB] text-[#765B45]">
@@ -1135,8 +980,6 @@ const Product = ({ token, setShowLogin }) => {
                             </div>
                           </div>
 
-                          {/* STARS */}
-
                           <div className="flex shrink-0 items-center gap-0.5">
                             {[1, 2, 3, 4, 5].map((star) => (
                               <span
@@ -1153,15 +996,11 @@ const Product = ({ token, setShowLogin }) => {
                           </div>
                         </div>
 
-                        {/* COMMENT */}
-
                         <div className="mt-5 rounded-[14px] bg-[#FBF8F4] px-4 py-4">
                           <p className="font-beautify text-sm leading-6 text-[#62564D]">
                             {review.comment}
                           </p>
                         </div>
-
-                        {/* ADMIN REPLY */}
 
                         {replyText && (
                           <div className="mt-5 rounded-[15px] border border-[#E6D9CC] bg-[#FBF7F2] p-4 sm:ml-8">
@@ -1178,6 +1017,12 @@ const Product = ({ token, setShowLogin }) => {
                             <p className="font-beautify mt-2 text-xs leading-5 text-[#75685E]">
                               {replyText}
                             </p>
+
+                            {adminReply?.signature && (
+                              <p className="font-beautify mt-3 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#634936]">
+                                — {adminReply.signature}
+                              </p>
+                            )}
                           </div>
                         )}
                       </article>
@@ -1187,10 +1032,6 @@ const Product = ({ token, setShowLogin }) => {
               </div>
             </>
           ) : (
-            /* =================================================
-                EMPTY REVIEW STATE
-            ================================================= */
-
             <div className="mt-8 overflow-hidden rounded-[24px] border border-[#E5D9CE] bg-[#FBF7F2]">
               <div className="relative px-6 py-12 text-center sm:px-10 sm:py-16">
                 <div className="pointer-events-none absolute -left-20 -top-20 h-40 w-40 rounded-full bg-[#E7D8C8]/40 blur-3xl" />
@@ -1226,22 +1067,16 @@ const Product = ({ token, setShowLogin }) => {
           )}
         </section>
 
-        {/* =================================================
-            RELATED PRODUCTS
-        ================================================= */}
-
         <section className="mt-16 sm:mt-20">
           <RelatedProducts
-            seating={productData.seating}
+            seating={
+              productData.attributes?.seating || productData.seating || ""
+            }
             material={productData.material}
             productId={productId}
           />
         </section>
       </div>
-
-      {/* =====================================================
-          REVIEW POPUP
-      ===================================================== */}
 
       {showReviewModal && deliveredOrder && (
         <Review

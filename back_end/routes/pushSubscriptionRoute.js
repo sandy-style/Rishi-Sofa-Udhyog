@@ -1,8 +1,13 @@
 import express from "express";
-import { saveSubscription } from "../controllers/pushSubscriptionController.js";
 
+import {
+  saveSubscription,
+  saveAdminSubscription,
+} from "../controllers/pushSubscriptionController.js";
+import authUser from "../middleware/auth.js";
+import adminAuth from "../middleware/adminAuth.js";
 const pushSubscriptionRouter = express.Router();
-
-pushSubscriptionRouter.post("/subscribe", saveSubscription);
+pushSubscriptionRouter.post("/admin-save", adminAuth, saveAdminSubscription);
+pushSubscriptionRouter.post("/subscribe", authUser, saveSubscription);
 
 export default pushSubscriptionRouter;

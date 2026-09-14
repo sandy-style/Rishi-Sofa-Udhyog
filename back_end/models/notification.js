@@ -17,9 +17,31 @@ const notificationSchema = new mongoose.Schema(
       required: true,
     },
 
+    // Specific customer who should receive this notification
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "user",
+      default: null,
+    },
+
+    // Related order, if this is an order notification
     orderId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "order",
+      default: null,
+    },
+
+    // Related product, if this is a product notification
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "product",
+      default: null,
+    },
+
+    // true when the notification is meant for all customers
+    isBroadcast: {
+      type: Boolean,
+      default: false,
     },
 
     isRead: {

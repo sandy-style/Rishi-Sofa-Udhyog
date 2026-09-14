@@ -5,55 +5,119 @@ import { backendUrl } from "../App";
 import { toast } from "react-toastify";
 
 const Add = ({ token }) => {
-  // Product images
+  // ============================================================
+  // PRODUCT IMAGES
+  // ============================================================
+
   const [image1, setImage1] = useState("");
   const [image2, setImage2] = useState("");
   const [image3, setImage3] = useState("");
   const [image4, setImage4] = useState("");
 
-  // Basic product data
+  // ============================================================
+  // BASIC PRODUCT DATA
+  // ============================================================
+
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [category, setCategory] = useState("Sofas");
   const [price, setPrice] = useState("");
   const [material, setMaterial] = useState("");
 
-  // Category options
+  // ============================================================
+  // CATEGORY OPTIONS
+  // ============================================================
+
   const [seating, setSeating] = useState("");
   const [size, setSize] = useState("");
   const [color, setColor] = useState("");
   const [style, setStyle] = useState("");
 
-  // Mattress options
+  // ============================================================
+  // DIMENSIONS
+  // ============================================================
+
+  const [dimensions, setDimensions] = useState({
+    width: "",
+    length: "",
+    depth: "",
+    height: "",
+    leftLength: "",
+    rightLength: "",
+    unit: "cm",
+  });
+
+  // ============================================================
+  // MATTRESS OPTIONS
+  // ============================================================
+
   const [mattressType, setMattressType] = useState("");
   const [thickness, setThickness] = useState("");
   const [firmness, setFirmness] = useState("");
 
-  // Offer options
+  // ============================================================
+  // OFFER OPTIONS
+  // ============================================================
+
   const [offerEnabled, setOfferEnabled] = useState(false);
   const [discountPercentage, setDiscountPercentage] = useState("");
   const [offerTitle, setOfferTitle] = useState("");
   const [offerEndsAt, setOfferEndsAt] = useState("");
 
-  // Product status
-  const [bestSeller, setBestSeller] = useState(false);
+  // ============================================================
+  // PRODUCT STATUS
+  // ============================================================
+
   const [onStock, setOnStock] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Handle category change
+  // ============================================================
+  // UPDATE DIMENSION
+  // ============================================================
+
+  const updateDimension = (field, value) => {
+    setDimensions((prev) => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  // ============================================================
+  // CATEGORY CHANGE
+  // ============================================================
+
   const handleCategoryChange = (e) => {
-    setCategory(e.target.value);
+    const newCategory = e.target.value;
+
+    setCategory(newCategory);
+
+    // Reset category-specific options
     setMaterial("");
     setSeating("");
     setSize("");
     setColor("");
     setStyle("");
+
     setMattressType("");
     setThickness("");
     setFirmness("");
+
+    // Reset dimensions
+    setDimensions({
+      width: "",
+      length: "",
+      depth: "",
+      height: "",
+      leftLength: "",
+      rightLength: "",
+      unit: "cm",
+    });
   };
 
-  // Calculate discounted price
+  // ============================================================
+  // CALCULATE DISCOUNTED PRICE
+  // ============================================================
+
   const calculateOfferPrice = () => {
     if (!price || !discountPercentage) return 0;
 
@@ -63,11 +127,18 @@ const Add = ({ token }) => {
     return originalPrice - (originalPrice * discount) / 100;
   };
 
-  // Submit product
+  // ============================================================
+  // SUBMIT PRODUCT
+  // ============================================================
+
   const submitHandler = async (e) => {
     e.preventDefault();
 
     if (loading) return;
+
+    // ============================================================
+    // BASIC VALIDATION
+    // ============================================================
 
     if (
       !name.trim() ||
@@ -91,6 +162,47 @@ const Add = ({ token }) => {
       toast.error("Please upload at least one product image");
       return;
     }
+
+    // ============================================================
+    // DIMENSION VALIDATION
+    // ============================================================
+
+    const numericDimensionFields = [
+      "width",
+      "length",
+      "depth",
+      "height",
+      "leftLength",
+      "rightLength",
+    ];
+
+    for (const field of numericDimensionFields) {
+      if (
+        dimensions[field] !== "" &&
+        (Number.isNaN(Number(dimensions[field])) ||
+          Number(dimensions[field]) < 0)
+      ) {
+        toast.error(`Please enter a valid ${field} dimension`);
+        return;
+      }
+    }
+
+    // ============================================================
+    // L SHAPE VALIDATION
+    // ============================================================
+
+    if (category === "Sofas" && size === "L Shape") {
+      if (dimensions.leftLength === "" || dimensions.rightLength === "") {
+        toast.error(
+          "Please enter both Left Length and Right Length for an L Shape sofa",
+        );
+        return;
+      }
+    }
+
+    // ============================================================
+    // OFFER VALIDATION
+    // ============================================================
 
     if (offerEnabled) {
       if (
@@ -118,15 +230,22 @@ const Add = ({ token }) => {
     try {
       const formData = new FormData();
 
+      // ============================================================
+      // BASIC DATA
+      // ============================================================
+
       formData.append("name", name.trim());
       formData.append("description", description.trim());
       formData.append("price", price);
       formData.append("category", category);
       formData.append("material", material);
 
+      // ============================================================
+      // ATTRIBUTES
+      // ============================================================
+
       const options = {
         seating: seating || "",
-        size: size || "",
         color: color || "",
         style: style || "",
         mattressType: mattressType || "",
@@ -135,6 +254,40 @@ const Add = ({ token }) => {
       };
 
       formData.append("attributes", JSON.stringify(options));
+
+      // ============================================================
+      // SIZE
+      // ============================================================
+
+      formData.append("size", size || "");
+
+      // ============================================================
+      // DIMENSIONS
+      // ============================================================
+
+      const cleanedDimensions = {
+        width: dimensions.width !== "" ? Number(dimensions.width) : null,
+
+        length: dimensions.length !== "" ? Number(dimensions.length) : null,
+
+        depth: dimensions.depth !== "" ? Number(dimensions.depth) : null,
+
+        height: dimensions.height !== "" ? Number(dimensions.height) : null,
+
+        leftLength:
+          dimensions.leftLength !== "" ? Number(dimensions.leftLength) : null,
+
+        rightLength:
+          dimensions.rightLength !== "" ? Number(dimensions.rightLength) : null,
+
+        unit: dimensions.unit || "cm",
+      };
+
+      formData.append("dimensions", JSON.stringify(cleanedDimensions));
+
+      // ============================================================
+      // OFFER
+      // ============================================================
 
       const offer = {
         isActive: offerEnabled,
@@ -146,13 +299,24 @@ const Add = ({ token }) => {
 
       formData.append("offer", JSON.stringify(offer));
 
+      // ============================================================
+      // STOCK
+      // ============================================================
+
       formData.append("stock", String(onStock));
-      formData.append("bestSeller", String(bestSeller));
+
+      // ============================================================
+      // IMAGES
+      // ============================================================
 
       if (image1) formData.append("image1", image1);
       if (image2) formData.append("image2", image2);
       if (image3) formData.append("image3", image3);
       if (image4) formData.append("image4", image4);
+
+      // ============================================================
+      // API REQUEST
+      // ============================================================
 
       const response = await axios.post(
         backendUrl + "/api/admin/add",
@@ -167,32 +331,69 @@ const Add = ({ token }) => {
       if (response.data.success) {
         toast.success(response.data.message);
 
+        // ============================================================
+        // RESET BASIC DATA
+        // ============================================================
+
         setName("");
         setDescription("");
         setCategory("Sofas");
         setPrice("");
         setMaterial("");
 
+        // ============================================================
+        // RESET CATEGORY OPTIONS
+        // ============================================================
+
         setSeating("");
         setSize("");
         setColor("");
         setStyle("");
 
+        // ============================================================
+        // RESET DIMENSIONS
+        // ============================================================
+
+        setDimensions({
+          width: "",
+          length: "",
+          depth: "",
+          height: "",
+          leftLength: "",
+          rightLength: "",
+          unit: "cm",
+        });
+
+        // ============================================================
+        // RESET MATTRESS OPTIONS
+        // ============================================================
+
         setMattressType("");
         setThickness("");
         setFirmness("");
+
+        // ============================================================
+        // RESET OFFER
+        // ============================================================
 
         setOfferEnabled(false);
         setDiscountPercentage("");
         setOfferTitle("");
         setOfferEndsAt("");
 
+        // ============================================================
+        // RESET IMAGES
+        // ============================================================
+
         setImage1("");
         setImage2("");
         setImage3("");
         setImage4("");
 
-        setBestSeller(false);
+        // ============================================================
+        // RESET STOCK
+        // ============================================================
+
         setOnStock(true);
       } else {
         toast.error(response.data.message);
@@ -210,7 +411,10 @@ const Add = ({ token }) => {
     }
   };
 
-  // Image upload component
+  // ============================================================
+  // IMAGE UPLOAD COMPONENT
+  // ============================================================
+
   const ImageUpload = ({ image, setImage, id }) => {
     return (
       <label
@@ -251,6 +455,38 @@ const Add = ({ token }) => {
     );
   };
 
+  // ============================================================
+  // DIMENSION INPUT
+  // ============================================================
+
+  const DimensionInput = ({ label, field, placeholder }) => {
+    return (
+      <div>
+        <label className="font-medium text-gray-800">{label}</label>
+
+        <div className="mt-2 flex">
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={dimensions[field]}
+            onChange={(e) => updateDimension(field, e.target.value)}
+            placeholder={placeholder}
+            className="w-full rounded-xl border px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
+          />
+
+          <span className="ml-2 flex min-w-[55px] items-center justify-center rounded-xl border bg-gray-100 px-3 text-sm font-medium text-gray-600">
+            {dimensions.unit}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  // ============================================================
+  // RENDER
+  // ============================================================
+
   return (
     <div className="min-h-screen bg-gray-50 px-3 py-4 sm:px-5 sm:py-6 md:px-8">
       <div className="mx-auto w-full max-w-6xl rounded-2xl border bg-white p-4 shadow-xl sm:rounded-3xl sm:p-6 md:p-8 lg:p-10">
@@ -265,6 +501,10 @@ const Add = ({ token }) => {
         </div>
 
         <form onSubmit={submitHandler} className="space-y-8 sm:space-y-10">
+          {/* ================================================== */}
+          {/* PRODUCT IMAGES */}
+          {/* ================================================== */}
+
           <div>
             <h2 className="mb-4 text-lg font-semibold sm:mb-5">
               Product Images
@@ -272,11 +512,18 @@ const Add = ({ token }) => {
 
             <div className="grid grid-cols-2 gap-3 sm:gap-5 md:grid-cols-4 md:gap-6">
               <ImageUpload image={image1} setImage={setImage1} id="image1" />
+
               <ImageUpload image={image2} setImage={setImage2} id="image2" />
+
               <ImageUpload image={image3} setImage={setImage3} id="image3" />
+
               <ImageUpload image={image4} setImage={setImage4} id="image4" />
             </div>
           </div>
+
+          {/* ================================================== */}
+          {/* PRODUCT NAME */}
+          {/* ================================================== */}
 
           <div>
             <label className="font-medium text-gray-800">Product Name</label>
@@ -289,6 +536,10 @@ const Add = ({ token }) => {
               required
             />
           </div>
+
+          {/* ================================================== */}
+          {/* DESCRIPTION */}
+          {/* ================================================== */}
 
           <div>
             <label className="font-medium text-gray-800">
@@ -305,6 +556,10 @@ const Add = ({ token }) => {
             />
           </div>
 
+          {/* ================================================== */}
+          {/* CATEGORY */}
+          {/* ================================================== */}
+
           <div>
             <label className="font-medium text-gray-800">
               Product Category
@@ -316,18 +571,31 @@ const Add = ({ token }) => {
               className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
             >
               <option value="Sofas">Sofas</option>
+
               <option value="Beds">Beds</option>
+
               <option value="Matteress">Mattress</option>
+
               <option value="Almirahs">Almirahs</option>
+
               <option value="Tables">Tables</option>
+
               <option value="Tv-units">TV Units</option>
             </select>
           </div>
+
+          {/* ================================================== */}
+          {/* CATEGORY OPTIONS */}
+          {/* ================================================== */}
 
           <div>
             <h2 className="mb-5 text-lg font-semibold">{category} Options</h2>
 
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3 md:gap-6">
+              {/* ================================================== */}
+              {/* SOFA SEATING */}
+              {/* ================================================== */}
+
               {category === "Sofas" && (
                 <div>
                   <label className="font-medium text-gray-800">
@@ -340,16 +608,59 @@ const Add = ({ token }) => {
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
                   >
                     <option value="">Select Seating Capacity</option>
+
                     <option value="1 Seater">1 Seater</option>
+
                     <option value="2 Seater">2 Seater</option>
+
                     <option value="3 Seater">3 Seater</option>
+
                     <option value="4 Seater">4 Seater</option>
+
                     <option value="5 Seater">5 Seater</option>
+
                     <option value="6 Seater">6 Seater</option>
+
                     <option value="L Shape">L Shape</option>
                   </select>
                 </div>
               )}
+
+              {/* ================================================== */}
+              {/* SOFA SIZE */}
+              {/* ================================================== */}
+
+              {category === "Sofas" && (
+                <div>
+                  <label className="font-medium text-gray-800">Size</label>
+
+                  <select
+                    value={size}
+                    onChange={(e) => setSize(e.target.value)}
+                    className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
+                  >
+                    <option value="">Select Size</option>
+
+                    <option value="1 Seater">1 Seater</option>
+
+                    <option value="2 Seater">2 Seater</option>
+
+                    <option value="3 Seater">3 Seater</option>
+
+                    <option value="4 Seater">4 Seater</option>
+
+                    <option value="5 Seater">5 Seater</option>
+
+                    <option value="6 Seater">6 Seater</option>
+
+                    <option value="L Shape">L Shape</option>
+                  </select>
+                </div>
+              )}
+
+              {/* ================================================== */}
+              {/* MATTRESS TYPE */}
+              {/* ================================================== */}
 
               {category === "Matteress" && (
                 <div>
@@ -363,16 +674,27 @@ const Add = ({ token }) => {
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
                   >
                     <option value="">Select Mattress Type</option>
+
                     <option value="Memory Foam">Memory Foam</option>
+
                     <option value="Spring">Spring</option>
+
                     <option value="Pocket Spring">Pocket Spring</option>
+
                     <option value="Latex">Latex</option>
+
                     <option value="Orthopedic">Orthopedic</option>
+
                     <option value="Coir">Coir</option>
+
                     <option value="Hybrid">Hybrid</option>
                   </select>
                 </div>
               )}
+
+              {/* ================================================== */}
+              {/* MATTRESS SIZE */}
+              {/* ================================================== */}
 
               {category === "Matteress" && (
                 <div>
@@ -386,14 +708,23 @@ const Add = ({ token }) => {
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
                   >
                     <option value="">Select Mattress Size</option>
+
                     <option value="Single">Single</option>
+
                     <option value="Double">Double</option>
+
                     <option value="Queen">Queen</option>
+
                     <option value="King">King</option>
+
                     <option value="Custom">Custom</option>
                   </select>
                 </div>
               )}
+
+              {/* ================================================== */}
+              {/* THICKNESS */}
+              {/* ================================================== */}
 
               {category === "Matteress" && (
                 <div>
@@ -405,15 +736,25 @@ const Add = ({ token }) => {
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
                   >
                     <option value="">Select Thickness</option>
-                    <option value='4"'>4 inches</option>
-                    <option value='5"'>5 inches</option>
-                    <option value='6"'>6 inches</option>
-                    <option value='8"'>8 inches</option>
-                    <option value='10"'>10 inches</option>
-                    <option value='12"'>12 inches</option>
+
+                    <option value={'4"'}>4 inches</option>
+
+                    <option value={'5"'}>5 inches</option>
+
+                    <option value={'6"'}>6 inches</option>
+
+                    <option value={'8"'}>8 inches</option>
+
+                    <option value={'10"'}>10 inches</option>
+
+                    <option value={'12"'}>12 inches</option>
                   </select>
                 </div>
               )}
+
+              {/* ================================================== */}
+              {/* FIRMNESS */}
+              {/* ================================================== */}
 
               {category === "Matteress" && (
                 <div>
@@ -425,13 +766,21 @@ const Add = ({ token }) => {
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
                   >
                     <option value="">Select Firmness</option>
+
                     <option value="Soft">Soft</option>
+
                     <option value="Medium">Medium</option>
+
                     <option value="Medium Firm">Medium Firm</option>
+
                     <option value="Firm">Firm</option>
                   </select>
                 </div>
               )}
+
+              {/* ================================================== */}
+              {/* MATERIAL */}
+              {/* ================================================== */}
 
               <div>
                 <label className="font-medium text-gray-800">
@@ -449,31 +798,48 @@ const Add = ({ token }) => {
                   {category === "Sofas" ? (
                     <>
                       <option value="Leather">Leather</option>
+
                       <option value="Fabric">Fabric</option>
+
                       <option value="Velvet">Velvet</option>
+
                       <option value="Linen">Linen</option>
+
                       <option value="Leatherette">Leatherette</option>
                     </>
                   ) : category === "Matteress" ? (
                     <>
                       <option value="Memory Foam">Memory Foam</option>
+
                       <option value="Latex">Latex</option>
+
                       <option value="Coir">Coir</option>
+
                       <option value="Spring">Spring</option>
+
                       <option value="Pocket Spring">Pocket Spring</option>
+
                       <option value="Hybrid">Hybrid</option>
+
                       <option value="Cotton">Cotton</option>
                     </>
                   ) : (
                     <>
                       <option value="Wood">Wood</option>
+
                       <option value="Engineered Wood">Engineered Wood</option>
+
                       <option value="Metal">Metal</option>
+
                       <option value="Glass">Glass</option>
                     </>
                   )}
                 </select>
               </div>
+
+              {/* ================================================== */}
+              {/* OTHER CATEGORY SIZE */}
+              {/* ================================================== */}
 
               {category !== "Sofas" && category !== "Matteress" && (
                 <div>
@@ -489,20 +855,29 @@ const Add = ({ token }) => {
                     {category === "Beds" ? (
                       <>
                         <option value="Single">Single</option>
+
                         <option value="Double">Double</option>
+
                         <option value="Queen">Queen</option>
+
                         <option value="King">King</option>
                       </>
                     ) : (
                       <>
                         <option value="Small">Small</option>
+
                         <option value="Medium">Medium</option>
+
                         <option value="Large">Large</option>
                       </>
                     )}
                   </select>
                 </div>
               )}
+
+              {/* ================================================== */}
+              {/* COLOR */}
+              {/* ================================================== */}
 
               <div>
                 <label className="font-medium text-gray-800">Color</label>
@@ -515,6 +890,10 @@ const Add = ({ token }) => {
                 />
               </div>
 
+              {/* ================================================== */}
+              {/* STYLE */}
+              {/* ================================================== */}
+
               <div>
                 <label className="font-medium text-gray-800">Style</label>
 
@@ -524,15 +903,107 @@ const Add = ({ token }) => {
                   className="mt-2 w-full rounded-xl border bg-white px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-black sm:text-base"
                 >
                   <option value="">Select Style</option>
+
                   <option value="Modern">Modern</option>
+
                   <option value="Contemporary">Contemporary</option>
+
                   <option value="Classic">Classic</option>
+
                   <option value="Minimalist">Minimalist</option>
+
                   <option value="Traditional">Traditional</option>
                 </select>
               </div>
             </div>
           </div>
+
+          {/* ================================================== */}
+          {/* PRODUCT DIMENSIONS */}
+          {/* ================================================== */}
+
+          <div className="rounded-2xl border bg-gray-50 p-5 sm:p-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold">Product Dimensions</h2>
+
+                <p className="mt-1 text-sm leading-6 text-gray-500">
+                  Enter the actual measurements of this product.
+                </p>
+              </div>
+
+              {/* UNIT */}
+              <div className="sm:w-32">
+                <label className="text-sm font-medium text-gray-700">
+                  Unit
+                </label>
+
+                <select
+                  value={dimensions.unit}
+                  onChange={(e) => updateDimension("unit", e.target.value)}
+                  className="mt-2 w-full rounded-xl border bg-white px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-black"
+                >
+                  <option value="cm">cm</option>
+
+                  <option value="in">in</option>
+
+                  <option value="ft">ft</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
+              {/* WIDTH */}
+
+              <DimensionInput label="Width" field="width" placeholder="180" />
+
+              {/* LENGTH */}
+
+              <DimensionInput label="Length" field="length" placeholder="200" />
+
+              {/* DEPTH */}
+
+              <DimensionInput label="Depth" field="depth" placeholder="90" />
+
+              {/* HEIGHT */}
+
+              <DimensionInput label="Height" field="height" placeholder="100" />
+
+              {/* L SHAPE LEFT LENGTH */}
+
+              {category === "Sofas" && size === "L Shape" && (
+                <DimensionInput
+                  label="Left Length"
+                  field="leftLength"
+                  placeholder="260"
+                />
+              )}
+
+              {/* L SHAPE RIGHT LENGTH */}
+
+              {category === "Sofas" && size === "L Shape" && (
+                <DimensionInput
+                  label="Right Length"
+                  field="rightLength"
+                  placeholder="180"
+                />
+              )}
+            </div>
+
+            {/* EXAMPLE */}
+
+            <div className="mt-5 rounded-xl border border-dashed bg-white p-4 text-sm leading-6 text-gray-500">
+              <span className="font-semibold text-gray-700">Example:</span> A
+              King Bed can be entered as Width{" "}
+              <span className="font-medium text-gray-700">180 cm</span>, Length{" "}
+              <span className="font-medium text-gray-700">200 cm</span> and
+              Height <span className="font-medium text-gray-700">100 cm</span>.
+            </div>
+          </div>
+
+          {/* ================================================== */}
+          {/* PRICE */}
+          {/* ================================================== */}
 
           <div>
             <label className="font-medium text-gray-800">Price</label>
@@ -547,6 +1018,10 @@ const Add = ({ token }) => {
               required
             />
           </div>
+
+          {/* ================================================== */}
+          {/* OFFER */}
+          {/* ================================================== */}
 
           <div className="rounded-2xl border bg-gray-50 p-5 sm:p-6">
             <div className="flex items-center justify-between gap-4">
@@ -572,6 +1047,8 @@ const Add = ({ token }) => {
 
             {offerEnabled && (
               <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 md:grid-cols-3">
+                {/* DISCOUNT */}
+
                 <div>
                   <label className="font-medium text-gray-800">
                     Discount %
@@ -588,6 +1065,8 @@ const Add = ({ token }) => {
                   />
                 </div>
 
+                {/* OFFER TITLE */}
+
                 <div>
                   <label className="font-medium text-gray-800">
                     Offer Title
@@ -601,6 +1080,8 @@ const Add = ({ token }) => {
                   />
                 </div>
 
+                {/* OFFER END */}
+
                 <div>
                   <label className="font-medium text-gray-800">
                     Offer Ends
@@ -613,6 +1094,8 @@ const Add = ({ token }) => {
                     className="mt-2 w-full rounded-xl border bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-black"
                   />
                 </div>
+
+                {/* OFFER PRICE */}
 
                 <div className="sm:col-span-2 md:col-span-3">
                   <div className="rounded-xl border bg-white p-4">
@@ -635,18 +1118,11 @@ const Add = ({ token }) => {
             )}
           </div>
 
+          {/* ================================================== */}
+          {/* STOCK */}
+          {/* ================================================== */}
+
           <div className="flex flex-col gap-4 pt-2 sm:flex-row sm:items-center sm:gap-8">
-            <label className="flex cursor-pointer items-center gap-3">
-              <input
-                type="checkbox"
-                checked={bestSeller}
-                onChange={() => setBestSeller(!bestSeller)}
-                className="h-5 w-5 cursor-pointer accent-black"
-              />
-
-              <span className="font-medium">Best Seller</span>
-            </label>
-
             <label className="flex cursor-pointer items-center gap-3">
               <input
                 type="checkbox"
@@ -658,6 +1134,10 @@ const Add = ({ token }) => {
               <span className="font-medium">In Stock</span>
             </label>
           </div>
+
+          {/* ================================================== */}
+          {/* SUBMIT */}
+          {/* ================================================== */}
 
           <div className="pt-2 sm:pt-5">
             <button

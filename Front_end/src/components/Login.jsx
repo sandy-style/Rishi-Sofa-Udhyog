@@ -46,7 +46,6 @@ const Login = ({ setShowLogin, setToken }) => {
 
       if (response.data.success && !response.data.verify) {
         setShow("Verify");
-        
       } else {
         toast.error(response.data.message);
       }
@@ -72,7 +71,9 @@ const Login = ({ setShowLogin, setToken }) => {
 
         toast.success(response.data.message);
 
-        window.location.reload();
+        // No page reload here.
+        // App.jsx will receive the new token and
+        // automatically start the push subscription.
       } else if (!response.data.success && response.data.verify === false) {
         setShow("Verify");
       } else {
@@ -100,7 +101,9 @@ const Login = ({ setShowLogin, setToken }) => {
 
         toast.success(response.data.message);
 
-        window.location.reload();
+        // No page reload here.
+        // App.jsx will receive the new token and
+        // automatically start the push subscription.
       } else {
         toast.error(response.data.message);
       }

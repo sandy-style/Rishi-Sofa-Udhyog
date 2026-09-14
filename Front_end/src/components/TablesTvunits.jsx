@@ -4,34 +4,42 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import ProductCard from "./ProductCard";
 
-const LatestCollection = () => {
+const TablesTvunits = () => {
   const { products } = useContext(ShopContext);
   const navigate = useNavigate();
 
-  const [latest, setLatest] = useState([]);
+  const [items, setItems] = useState([]);
 
   const sliderRef = useRef(null);
   const animationRef = useRef(null);
   const pausedRef = useRef(false);
 
-  // ================= LATEST PRODUCTS =================
+  // ================= TABLE + TV UNIT PRODUCTS =================
 
   useEffect(() => {
     if (!products || products.length === 0) {
-      setLatest([]);
+      setItems([]);
       return;
     }
 
-    const latestProducts = [...products]
-      .sort((a, b) => {
-        const dateA = new Date(a.date || 0).getTime();
-        const dateB = new Date(b.date || 0).getTime();
+    const filteredProducts = products
+      .filter((item) => {
+        const category = String(item?.category || item?.productCategory || "")
+          .trim()
+          .toLowerCase();
 
-        return dateB - dateA;
+        return (
+          category === "table" ||
+          category === "tables" ||
+          category === "tv-unit" ||
+          category === "tv-units" ||
+          category === "tvunit" ||
+          category === "tvunits"
+        );
       })
       .slice(0, 8);
 
-    setLatest(latestProducts);
+    setItems(filteredProducts);
   }, [products]);
 
   // ================= AUTO SLIDER =================
@@ -40,7 +48,7 @@ const LatestCollection = () => {
     const slider = sliderRef.current;
 
     // Don't auto-scroll when there aren't enough products
-    if (!slider || latest.length < 3) return;
+    if (!slider || items.length < 3) return;
 
     let lastTime = performance.now();
 
@@ -73,7 +81,7 @@ const LatestCollection = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [latest]);
+  }, [items]);
 
   // ================= PAUSE CONTROLS =================
 
@@ -118,7 +126,7 @@ const LatestCollection = () => {
   const handlePrevious = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || items.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -141,7 +149,7 @@ const LatestCollection = () => {
   const handleNext = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || items.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -159,21 +167,11 @@ const LatestCollection = () => {
     }, 700);
   };
 
-  // ================= VIEW MORE =================
-
-  const handleViewMore = () => {
-    navigate("/collection?sort=New");
-  };
-
-  // ================= CARD SIZE =================
-  //
-  // 1 product  -> normal compact width
-  // 2 products -> two cards comfortably
-  // 3+         -> original responsive slider sizing
-  //
+  // ================= CARD WIDTH =================
 
   const getProductCardClass = () => {
-    if (latest.length === 1) {
+    // One product
+    if (items.length === 1) {
       return `
         shrink-0
         w-[82%]
@@ -183,7 +181,8 @@ const LatestCollection = () => {
       `;
     }
 
-    if (latest.length === 2) {
+    // Two products
+    if (items.length === 2) {
       return `
         shrink-0
         w-[82%]
@@ -193,6 +192,7 @@ const LatestCollection = () => {
       `;
     }
 
+    // Three or more products
     return `
       shrink-0
       w-[78%]
@@ -227,107 +227,244 @@ const LatestCollection = () => {
   // ================= VIEW MORE CARD =================
 
   const renderViewMore = () => (
-    <button
-      type="button"
-      onClick={handleViewMore}
-      className="
-        group
-        flex
+    <div
+      className={`
         shrink-0
+        flex
+        gap-3
         w-[82%]
-        items-center
-        justify-center
-        rounded-2xl
-        border
-        border-[#D8C9B8]
-        bg-[#FBF8F4]
-        px-6
-        transition-all
-        duration-500
-
-        hover:-translate-y-1
-        hover:border-[#6A4E3B]
-        hover:bg-[#F2E5D6]
-        hover:shadow-[0_20px_45px_rgba(115,82,45,0.14)]
-
         sm:w-[47%]
-        sm:rounded-[26px]
-
         md:w-[31.5%]
-
         lg:w-[calc(25%-18px)]
-        lg:rounded-[30px]
-      "
+      `}
     >
-      <div className="flex flex-col items-center text-center">
-        {/* Animated Arrow Circle */}
+      {/* ================= TABLES ================= */}
 
-        <div
-          className="
-            mb-5
-            flex
-            h-14
-            w-14
-            items-center
-            justify-center
-            rounded-full
-            border
-            border-[#CDBEAE]
-            text-[#6A4E3B]
-            transition-all
-            duration-300
+      <button
+        type="button"
+        onClick={() => navigate("/collection?category=Tables")}
+        className="
+          group
+          flex
+          min-w-0
+          flex-1
+          items-center
+          justify-center
+          rounded-2xl
+          border
+          border-[#D8C9B8]
+          bg-[#FBF8F4]
+          px-4
+          py-8
+          transition-all
+          duration-500
 
-            group-hover:scale-110
-            group-hover:bg-[#6A4E3B]
-            group-hover:text-white
+          hover:-translate-y-1
+          hover:border-[#6A4E3B]
+          hover:bg-[#F2E5D6]
+          hover:shadow-[0_20px_45px_rgba(115,82,45,0.14)]
 
-            sm:h-16
-            sm:w-16
-          "
-        >
-          <FiArrowRight
+          sm:rounded-[26px]
+          sm:px-5
+          sm:py-10
+
+          lg:rounded-[30px]
+        "
+      >
+        <div className="flex flex-col items-center text-center">
+          <div
             className="
-              text-xl
+              mb-4
+              flex
+              h-12
+              w-12
+              items-center
+              justify-center
+              rounded-full
+              border
+              border-[#CDBEAE]
+              text-[#6A4E3B]
+              transition-all
+              duration-300
+
+              group-hover:scale-110
+              group-hover:bg-[#6A4E3B]
+              group-hover:text-white
+
+              sm:mb-5
+              sm:h-14
+              sm:w-14
+
+              lg:h-16
+              lg:w-16
+            "
+          >
+            <FiArrowRight
+              className="
+                text-lg
+                transition-transform
+                duration-300
+                group-hover:translate-x-1
+
+                sm:text-xl
+                lg:text-2xl
+              "
+            />
+          </div>
+
+          <h3
+            className="
+              font-serif
+              text-base
+              font-medium
+              leading-tight
+              text-[#3B2B20]
+
               transition-transform
               duration-300
-              group-hover:translate-x-1
-              sm:text-2xl
+              group-hover:-translate-y-0.5
+
+              sm:text-lg
+
+              lg:text-xl
             "
-          />
+          >
+            Explore Tables
+          </h3>
+
+          <p
+            className="
+              mt-2
+              max-w-[170px]
+              text-[10px]
+              leading-4
+              text-[#806F62]
+
+              sm:text-xs
+              sm:leading-5
+            "
+          >
+            Discover elegant tables crafted for modern living
+          </p>
         </div>
+      </button>
 
-        <h3
-          className="
-            font-serif
-            text-lg
-            text-[#3B2B20]
+      {/* ================= TV UNITS ================= */}
 
-            transition-transform
-            duration-300
-            group-hover:-translate-y-0.5
+      <button
+        type="button"
+        onClick={() => navigate("/collection?category=Tv-units")}
+        className="
+          group
+          flex
+          min-w-0
+          flex-1
+          items-center
+          justify-center
+          rounded-2xl
+          border
+          border-[#D8C9B8]
+          bg-[#FBF8F4]
+          px-4
+          py-8
+          transition-all
+          duration-500
 
-            sm:text-xl
-          "
-        >
-          View More
-        </h3>
+          hover:-translate-y-1
+          hover:border-[#6A4E3B]
+          hover:bg-[#F2E5D6]
+          hover:shadow-[0_20px_45px_rgba(115,82,45,0.14)]
 
-        <p
-          className="
-            mt-2
-            max-w-[200px]
-            text-xs
-            leading-5
-            text-[#806F62]
-          "
-        >
-          Explore our newest furniture arrivals
-        </p>
-      </div>
-    </button>
+          sm:rounded-[26px]
+          sm:px-5
+          sm:py-10
+
+          lg:rounded-[30px]
+        "
+      >
+        <div className="flex flex-col items-center text-center">
+          <div
+            className="
+              mb-4
+              flex
+              h-12
+              w-12
+              items-center
+              justify-center
+              rounded-full
+              border
+              border-[#CDBEAE]
+              text-[#6A4E3B]
+              transition-all
+              duration-300
+
+              group-hover:scale-110
+              group-hover:bg-[#6A4E3B]
+              group-hover:text-white
+
+              sm:mb-5
+              sm:h-14
+              sm:w-14
+
+              lg:h-16
+              lg:w-16
+            "
+          >
+            <FiArrowRight
+              className="
+                text-lg
+                transition-transform
+                duration-300
+                group-hover:translate-x-1
+
+                sm:text-xl
+                lg:text-2xl
+              "
+            />
+          </div>
+
+          <h3
+            className="
+              font-serif
+              text-base
+              font-medium
+              leading-tight
+              text-[#3B2B20]
+
+              transition-transform
+              duration-300
+              group-hover:-translate-y-0.5
+
+              sm:text-lg
+
+              lg:text-xl
+            "
+          >
+            Explore TV Units
+          </h3>
+
+          <p
+            className="
+              mt-2
+              max-w-[170px]
+              text-[10px]
+              leading-4
+              text-[#806F62]
+
+              sm:text-xs
+              sm:leading-5
+            "
+          >
+            Find refined TV units for your entertainment space
+          </p>
+        </div>
+      </button>
+    </div>
   );
 
-  if (!latest.length) return null;
+  // ================= EMPTY STATE =================
+
+  if (!items.length) return null;
 
   return (
     <section className="my-12 sm:my-16 lg:my-20">
@@ -354,7 +491,7 @@ const LatestCollection = () => {
           "
         >
           <div className="text-center lg:text-left">
-            {/* Section Label */}
+            {/* SECTION LABEL */}
 
             <div
               className="
@@ -381,13 +518,13 @@ const LatestCollection = () => {
                   sm:text-[11px]
                 "
               >
-                Latest Collection
+                Tables & TV Units
               </span>
 
               <span className="h-px w-10 bg-[#C8A77F]" />
             </div>
 
-            {/* Heading */}
+            {/* HEADING */}
 
             <h2
               className="
@@ -405,12 +542,12 @@ const LatestCollection = () => {
                 xl:text-[48px]
               "
             >
-              Freshly Crafted,
+              Complete Your Space,
               <br className="hidden sm:block" />
-              <span className="text-[#8A6B50]"> Made for Living</span>
+              <span className="text-[#8A6B50]"> With Purposeful Design</span>
             </h2>
 
-            {/* Description */}
+            {/* DESCRIPTION */}
 
             <p
               className="
@@ -428,15 +565,14 @@ const LatestCollection = () => {
                 lg:text-base
               "
             >
-              Discover our newest furniture pieces, combining premium materials,
-              elegant craftsmanship, and thoughtful design to bring comfort and
-              character to every space.
+              Discover beautifully designed tables and TV units that combine
+              practical functionality with refined style for every modern home.
             </p>
           </div>
 
           {/* ================= DESKTOP ARROWS ================= */}
 
-          {latest.length >= 3 && (
+          {items.length >= 3 && (
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 type="button"
@@ -526,7 +662,7 @@ const LatestCollection = () => {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="
-            latest-collection-slider
+            tables-tv-slider
             flex
             w-full
             gap-4
@@ -543,14 +679,14 @@ const LatestCollection = () => {
             xl:px-10
           "
         >
-          {latest.map((item, index) => renderProduct(item, index))}
+          {items.map((item, index) => renderProduct(item, index))}
 
           {renderViewMore()}
         </div>
 
         {/* ================= MOBILE SWIPE HINT ================= */}
 
-        {latest.length >= 2 && (
+        {items.length >= 2 && (
           <div
             className="
               mt-2
@@ -580,11 +716,11 @@ const LatestCollection = () => {
 
       <style>
         {`
-          .latest-collection-slider::-webkit-scrollbar {
+          .tables-tv-slider::-webkit-scrollbar {
             display: none;
           }
 
-          .latest-collection-slider {
+          .tables-tv-slider {
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-behavior: auto;
@@ -596,4 +732,4 @@ const LatestCollection = () => {
   );
 };
 
-export default LatestCollection;
+export default TablesTvunits;

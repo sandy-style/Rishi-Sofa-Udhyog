@@ -4,34 +4,41 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import ProductCard from "./ProductCard";
 
-const LatestCollection = () => {
+const Beds = () => {
   const { products } = useContext(ShopContext);
   const navigate = useNavigate();
 
-  const [latest, setLatest] = useState([]);
+  const [bedProducts, setBedProducts] = useState([]);
 
   const sliderRef = useRef(null);
   const animationRef = useRef(null);
   const pausedRef = useRef(false);
 
-  // ================= LATEST PRODUCTS =================
+  // ================= BED + MATTRESS PRODUCTS =================
 
   useEffect(() => {
     if (!products || products.length === 0) {
-      setLatest([]);
+      setBedProducts([]);
       return;
     }
 
-    const latestProducts = [...products]
-      .sort((a, b) => {
-        const dateA = new Date(a.date || 0).getTime();
-        const dateB = new Date(b.date || 0).getTime();
+    const filteredProducts = products
+      .filter((item) => {
+        const category = String(item?.category || item?.productCategory || "")
+          .trim()
+          .toLowerCase();
 
-        return dateB - dateA;
+        return (
+          category === "bed" ||
+          category === "beds" ||
+          category === "mattress" ||
+          category === "mattresses" ||
+          category === "matteress"
+        );
       })
       .slice(0, 8);
 
-    setLatest(latestProducts);
+    setBedProducts(filteredProducts);
   }, [products]);
 
   // ================= AUTO SLIDER =================
@@ -39,8 +46,8 @@ const LatestCollection = () => {
   useEffect(() => {
     const slider = sliderRef.current;
 
-    // Don't auto-scroll when there aren't enough products
-    if (!slider || latest.length < 3) return;
+    // Don't auto-scroll when there are fewer than 3 products
+    if (!slider || bedProducts.length < 3) return;
 
     let lastTime = performance.now();
 
@@ -73,7 +80,7 @@ const LatestCollection = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [latest]);
+  }, [bedProducts]);
 
   // ================= PAUSE CONTROLS =================
 
@@ -118,7 +125,7 @@ const LatestCollection = () => {
   const handlePrevious = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || bedProducts.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -141,7 +148,7 @@ const LatestCollection = () => {
   const handleNext = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || bedProducts.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -162,18 +169,14 @@ const LatestCollection = () => {
   // ================= VIEW MORE =================
 
   const handleViewMore = () => {
-    navigate("/collection?sort=New");
+    navigate("/collection?category=Beds");
   };
 
-  // ================= CARD SIZE =================
-  //
-  // 1 product  -> normal compact width
-  // 2 products -> two cards comfortably
-  // 3+         -> original responsive slider sizing
-  //
+  // ================= CARD WIDTH CLASS =================
 
   const getProductCardClass = () => {
-    if (latest.length === 1) {
+    // 1 product
+    if (bedProducts.length === 1) {
       return `
         shrink-0
         w-[82%]
@@ -183,7 +186,8 @@ const LatestCollection = () => {
       `;
     }
 
-    if (latest.length === 2) {
+    // 2 products
+    if (bedProducts.length === 2) {
       return `
         shrink-0
         w-[82%]
@@ -193,6 +197,7 @@ const LatestCollection = () => {
       `;
     }
 
+    // 3+ products
     return `
       shrink-0
       w-[78%]
@@ -204,25 +209,36 @@ const LatestCollection = () => {
 
   // ================= PRODUCT CARD =================
 
-  const renderProduct = (item, index) => (
-    <div
-      key={item._id || index}
-      data-product-card
-      className={getProductCardClass()}
-    >
-      <ProductCard
-        id={item._id}
-        image={item.image?.[0]}
-        name={item.name}
-        price={item.price}
-        description={item.description}
-        offer={item.offer}
-        stock={item.stock}
-        bestSeller={Number(item.soldCount || 0) > 0}
-        category={item.category}
-      />
-    </div>
-  );
+  const renderProduct = (item, index) => {
+    const category = String(
+      item?.category || item?.productCategory || "",
+    ).toLowerCase();
+
+    const isMattress =
+      category === "mattress" ||
+      category === "mattresses" ||
+      category === "matteress";
+
+    return (
+      <div
+        key={item._id || index}
+        data-product-card
+        className={getProductCardClass()}
+      >
+        <ProductCard
+          id={item._id}
+          image={item.image?.[0]}
+          name={item.name}
+          price={item.price}
+          description={item.description}
+          offer={item.offer}
+          stock={item.stock}
+          bestSeller={Number(item.soldCount || 0) > 0}
+          category={item.category}
+        />
+      </div>
+    );
+  };
 
   // ================= VIEW MORE CARD =================
 
@@ -260,7 +276,7 @@ const LatestCollection = () => {
       "
     >
       <div className="flex flex-col items-center text-center">
-        {/* Animated Arrow Circle */}
+        {/* Arrow Circle */}
 
         <div
           className="
@@ -291,10 +307,13 @@ const LatestCollection = () => {
               transition-transform
               duration-300
               group-hover:translate-x-1
+
               sm:text-2xl
             "
           />
         </div>
+
+        {/* Heading */}
 
         <h3
           className="
@@ -312,6 +331,8 @@ const LatestCollection = () => {
           View More
         </h3>
 
+        {/* Description */}
+
         <p
           className="
             mt-2
@@ -321,13 +342,15 @@ const LatestCollection = () => {
             text-[#806F62]
           "
         >
-          Explore our newest furniture arrivals
+          Explore our complete collection of beds and premium mattresses
         </p>
       </div>
     </button>
   );
 
-  if (!latest.length) return null;
+  // Don't render empty section
+
+  if (!bedProducts.length) return null;
 
   return (
     <section className="my-12 sm:my-16 lg:my-20">
@@ -381,7 +404,7 @@ const LatestCollection = () => {
                   sm:text-[11px]
                 "
               >
-                Latest Collection
+                Beds & Mattresses
               </span>
 
               <span className="h-px w-10 bg-[#C8A77F]" />
@@ -405,9 +428,9 @@ const LatestCollection = () => {
                 xl:text-[48px]
               "
             >
-              Freshly Crafted,
+              Rest in Comfort,
               <br className="hidden sm:block" />
-              <span className="text-[#8A6B50]"> Made for Living</span>
+              <span className="text-[#8A6B50]"> Wake in Style</span>
             </h2>
 
             {/* Description */}
@@ -428,15 +451,15 @@ const LatestCollection = () => {
                 lg:text-base
               "
             >
-              Discover our newest furniture pieces, combining premium materials,
-              elegant craftsmanship, and thoughtful design to bring comfort and
-              character to every space.
+              Discover beautifully crafted beds and premium mattresses designed
+              to bring lasting comfort, elegant style, and restful nights to
+              your bedroom.
             </p>
           </div>
 
           {/* ================= DESKTOP ARROWS ================= */}
 
-          {latest.length >= 3 && (
+          {bedProducts.length >= 3 && (
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 type="button"
@@ -464,7 +487,7 @@ const LatestCollection = () => {
                   xl:h-12
                   xl:w-12
                 "
-                aria-label="Previous products"
+                aria-label="Previous beds and mattresses"
               >
                 <FiArrowLeft
                   className="
@@ -502,7 +525,7 @@ const LatestCollection = () => {
                   xl:h-12
                   xl:w-12
                 "
-                aria-label="Next products"
+                aria-label="Next beds and mattresses"
               >
                 <FiArrowRight
                   className="
@@ -526,7 +549,7 @@ const LatestCollection = () => {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="
-            latest-collection-slider
+            beds-slider
             flex
             w-full
             gap-4
@@ -543,14 +566,14 @@ const LatestCollection = () => {
             xl:px-10
           "
         >
-          {latest.map((item, index) => renderProduct(item, index))}
+          {bedProducts.map((item, index) => renderProduct(item, index))}
 
           {renderViewMore()}
         </div>
 
         {/* ================= MOBILE SWIPE HINT ================= */}
 
-        {latest.length >= 2 && (
+        {bedProducts.length >= 2 && (
           <div
             className="
               mt-2
@@ -580,11 +603,11 @@ const LatestCollection = () => {
 
       <style>
         {`
-          .latest-collection-slider::-webkit-scrollbar {
+          .beds-slider::-webkit-scrollbar {
             display: none;
           }
 
-          .latest-collection-slider {
+          .beds-slider {
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-behavior: auto;
@@ -596,4 +619,4 @@ const LatestCollection = () => {
   );
 };
 
-export default LatestCollection;
+export default Beds;

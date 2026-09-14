@@ -1,5 +1,8 @@
 import mongoose, { Schema } from "mongoose";
 
+// =========================
+// ADMIN REVIEW REPLY
+// =========================
 const adminReplySchema = new Schema(
   {
     comment: {
@@ -24,6 +27,9 @@ const adminReplySchema = new Schema(
   },
 );
 
+// =========================
+// REVIEW
+// =========================
 const reviewSchema = new Schema(
   {
     user: {
@@ -66,6 +72,9 @@ const reviewSchema = new Schema(
   },
 );
 
+// =========================
+// OFFER
+// =========================
 const offerSchema = new Schema(
   {
     isActive: {
@@ -101,8 +110,67 @@ const offerSchema = new Schema(
   },
 );
 
+// =========================
+// PRODUCT DIMENSIONS
+// =========================
+const dimensionsSchema = new Schema(
+  {
+    width: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    length: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    depth: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    height: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    // Used mainly for L-shaped sofas
+    leftLength: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    rightLength: {
+      type: Number,
+      min: 0,
+      default: null,
+    },
+
+    unit: {
+      type: String,
+      enum: ["cm", "in", "ft"],
+      default: "cm",
+    },
+  },
+  {
+    _id: false,
+  },
+);
+
+// =========================
+// PRODUCT
+// =========================
 const productSchema = new Schema(
   {
+    // =========================
+    // BASIC INFORMATION
+    // =========================
     name: {
       type: String,
       required: true,
@@ -133,12 +201,49 @@ const productSchema = new Schema(
       trim: true,
     },
 
+    // =========================
+    // PRODUCT ATTRIBUTES
+    // =========================
     attributes: {
       type: Map,
       of: String,
       default: {},
     },
 
+    // =========================
+    // SIZE
+    // =========================
+    // Examples:
+    // Sofa  -> "3 Seater"
+    // Sofa  -> "L Shape"
+    // Bed   -> "King"
+    // Mattress -> "Queen"
+    // Table -> "Large"
+    size: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    // =========================
+    // DIMENSIONS
+    // =========================
+    dimensions: {
+      type: dimensionsSchema,
+      default: () => ({
+        width: null,
+        length: null,
+        depth: null,
+        height: null,
+        leftLength: null,
+        rightLength: null,
+        unit: "cm",
+      }),
+    },
+
+    // =========================
+    // OFFER
+    // =========================
     offer: {
       type: offerSchema,
       default: () => ({
@@ -150,21 +255,36 @@ const productSchema = new Schema(
       }),
     },
 
+    // =========================
+    // REVIEWS
+    // =========================
     reviews: {
       type: [reviewSchema],
       default: [],
     },
 
-    bestSeller: {
-      type: Boolean,
-      default: false,
+    // =========================
+    // SOLD COUNT
+    // =========================
+    // Automatically increased when
+    // an order becomes Delivered.
+    soldCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
 
+    // =========================
+    // STOCK
+    // =========================
     stock: {
       type: Boolean,
       default: true,
     },
 
+    // =========================
+    // IMAGES
+    // =========================
     image: {
       type: [String],
       required: true,
@@ -172,15 +292,20 @@ const productSchema = new Schema(
         validator: function (value) {
           return value.length > 0;
         },
+
         message: "At least one product image is required",
       },
     },
 
+    // =========================
+    // PRODUCT DATE
+    // =========================
     date: {
       type: Date,
       default: Date.now,
     },
   },
+
   {
     timestamps: true,
   },

@@ -4,34 +4,35 @@ import { useNavigate } from "react-router-dom";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import ProductCard from "./ProductCard";
 
-const LatestCollection = () => {
+const Almirah = () => {
   const { products } = useContext(ShopContext);
   const navigate = useNavigate();
 
-  const [latest, setLatest] = useState([]);
+  const [almirahs, setAlmirahs] = useState([]);
 
   const sliderRef = useRef(null);
   const animationRef = useRef(null);
   const pausedRef = useRef(false);
 
-  // ================= LATEST PRODUCTS =================
+  // ================= ALMIRAH PRODUCTS =================
 
   useEffect(() => {
     if (!products || products.length === 0) {
-      setLatest([]);
+      setAlmirahs([]);
       return;
     }
 
-    const latestProducts = [...products]
-      .sort((a, b) => {
-        const dateA = new Date(a.date || 0).getTime();
-        const dateB = new Date(b.date || 0).getTime();
+    const almirahProducts = products
+      .filter((item) => {
+        const category = String(item?.category || item?.productCategory || "")
+          .trim()
+          .toLowerCase();
 
-        return dateB - dateA;
+        return category === "almirah" || category === "almirahs";
       })
       .slice(0, 8);
 
-    setLatest(latestProducts);
+    setAlmirahs(almirahProducts);
   }, [products]);
 
   // ================= AUTO SLIDER =================
@@ -39,8 +40,8 @@ const LatestCollection = () => {
   useEffect(() => {
     const slider = sliderRef.current;
 
-    // Don't auto-scroll when there aren't enough products
-    if (!slider || latest.length < 3) return;
+    // Don't auto-scroll when there are fewer than 3 products
+    if (!slider || almirahs.length < 3) return;
 
     let lastTime = performance.now();
 
@@ -73,7 +74,7 @@ const LatestCollection = () => {
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [latest]);
+  }, [almirahs]);
 
   // ================= PAUSE CONTROLS =================
 
@@ -118,7 +119,7 @@ const LatestCollection = () => {
   const handlePrevious = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || almirahs.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -141,7 +142,7 @@ const LatestCollection = () => {
   const handleNext = () => {
     const slider = sliderRef.current;
 
-    if (!slider || latest.length < 3) return;
+    if (!slider || almirahs.length < 3) return;
 
     const cardWidth = getCardWidth();
 
@@ -162,18 +163,14 @@ const LatestCollection = () => {
   // ================= VIEW MORE =================
 
   const handleViewMore = () => {
-    navigate("/collection?sort=New");
+    navigate("/collection?category=Almirahs");
   };
 
-  // ================= CARD SIZE =================
-  //
-  // 1 product  -> normal compact width
-  // 2 products -> two cards comfortably
-  // 3+         -> original responsive slider sizing
-  //
+  // ================= CARD WIDTH CLASS =================
 
   const getProductCardClass = () => {
-    if (latest.length === 1) {
+    // 1 product
+    if (almirahs.length === 1) {
       return `
         shrink-0
         w-[82%]
@@ -183,7 +180,8 @@ const LatestCollection = () => {
       `;
     }
 
-    if (latest.length === 2) {
+    // 2 products
+    if (almirahs.length === 2) {
       return `
         shrink-0
         w-[82%]
@@ -193,6 +191,7 @@ const LatestCollection = () => {
       `;
     }
 
+    // 3+ products
     return `
       shrink-0
       w-[78%]
@@ -260,7 +259,7 @@ const LatestCollection = () => {
       "
     >
       <div className="flex flex-col items-center text-center">
-        {/* Animated Arrow Circle */}
+        {/* Arrow Circle */}
 
         <div
           className="
@@ -291,10 +290,13 @@ const LatestCollection = () => {
               transition-transform
               duration-300
               group-hover:translate-x-1
+
               sm:text-2xl
             "
           />
         </div>
+
+        {/* Heading */}
 
         <h3
           className="
@@ -312,6 +314,8 @@ const LatestCollection = () => {
           View More
         </h3>
 
+        {/* Description */}
+
         <p
           className="
             mt-2
@@ -321,13 +325,15 @@ const LatestCollection = () => {
             text-[#806F62]
           "
         >
-          Explore our newest furniture arrivals
+          Explore our complete collection of elegant almirahs
         </p>
       </div>
     </button>
   );
 
-  if (!latest.length) return null;
+  // Don't render empty section
+
+  if (!almirahs.length) return null;
 
   return (
     <section className="my-12 sm:my-16 lg:my-20">
@@ -381,7 +387,7 @@ const LatestCollection = () => {
                   sm:text-[11px]
                 "
               >
-                Latest Collection
+                Almirah Collection
               </span>
 
               <span className="h-px w-10 bg-[#C8A77F]" />
@@ -405,9 +411,9 @@ const LatestCollection = () => {
                 xl:text-[48px]
               "
             >
-              Freshly Crafted,
+              Organized in Style,
               <br className="hidden sm:block" />
-              <span className="text-[#8A6B50]"> Made for Living</span>
+              <span className="text-[#8A6B50]"> Designed for Living</span>
             </h2>
 
             {/* Description */}
@@ -428,15 +434,14 @@ const LatestCollection = () => {
                 lg:text-base
               "
             >
-              Discover our newest furniture pieces, combining premium materials,
-              elegant craftsmanship, and thoughtful design to bring comfort and
-              character to every space.
+              Discover elegant almirahs crafted to bring practical storage,
+              refined design, and timeless character to your bedroom and home.
             </p>
           </div>
 
           {/* ================= DESKTOP ARROWS ================= */}
 
-          {latest.length >= 3 && (
+          {almirahs.length >= 3 && (
             <div className="hidden items-center gap-3 lg:flex">
               <button
                 type="button"
@@ -464,7 +469,7 @@ const LatestCollection = () => {
                   xl:h-12
                   xl:w-12
                 "
-                aria-label="Previous products"
+                aria-label="Previous almirahs"
               >
                 <FiArrowLeft
                   className="
@@ -502,7 +507,7 @@ const LatestCollection = () => {
                   xl:h-12
                   xl:w-12
                 "
-                aria-label="Next products"
+                aria-label="Next almirahs"
               >
                 <FiArrowRight
                   className="
@@ -526,7 +531,7 @@ const LatestCollection = () => {
           onTouchStart={handleTouchStart}
           onTouchEnd={handleTouchEnd}
           className="
-            latest-collection-slider
+            almirah-slider
             flex
             w-full
             gap-4
@@ -543,14 +548,14 @@ const LatestCollection = () => {
             xl:px-10
           "
         >
-          {latest.map((item, index) => renderProduct(item, index))}
+          {almirahs.map((item, index) => renderProduct(item, index))}
 
           {renderViewMore()}
         </div>
 
         {/* ================= MOBILE SWIPE HINT ================= */}
 
-        {latest.length >= 2 && (
+        {almirahs.length >= 2 && (
           <div
             className="
               mt-2
@@ -580,11 +585,11 @@ const LatestCollection = () => {
 
       <style>
         {`
-          .latest-collection-slider::-webkit-scrollbar {
+          .almirah-slider::-webkit-scrollbar {
             display: none;
           }
 
-          .latest-collection-slider {
+          .almirah-slider {
             scrollbar-width: none;
             -ms-overflow-style: none;
             scroll-behavior: auto;
@@ -596,4 +601,4 @@ const LatestCollection = () => {
   );
 };
 
-export default LatestCollection;
+export default Almirah;

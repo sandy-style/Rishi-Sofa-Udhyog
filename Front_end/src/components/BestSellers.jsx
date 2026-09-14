@@ -15,14 +15,9 @@ const BestSellers = () => {
   const pausedRef = useRef(false);
 
   useEffect(() => {
-    const bestProducts = products
-      .filter(
-        (item) =>
-          item.bestSeller === true ||
-          item.bestSeller === "true" ||
-          item.bestSeller === 1 ||
-          item.bestSeller === "1",
-      )
+    const bestProducts = [...products]
+      .filter((item) => Number(item.soldCount || 0) > 0)
+      .sort((a, b) => Number(b.soldCount || 0) - Number(a.soldCount || 0))
       .slice(0, 8);
 
     setBestSeller(bestProducts);
@@ -147,7 +142,7 @@ const BestSellers = () => {
         description={item.description}
         offer={item.offer}
         stock={item.stock}
-        bestSeller={item.bestSeller}
+        bestSeller={true}
         category={item.category}
       />
     </div>

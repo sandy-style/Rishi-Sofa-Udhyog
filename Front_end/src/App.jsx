@@ -15,6 +15,8 @@ import Footer from "./components/Footer";
 import PlaceOrder from "./pages/PlaceOrder";
 import Orders from "./pages/Orders";
 
+import subscribeToPushNotifications from "./utils/pushNotification";
+
 export const backendUrl = import.meta.env.VITE_backend_url;
 
 const App = () => {
@@ -22,8 +24,36 @@ const App = () => {
 
   const [token, setToken] = useState(localStorage.getItem("token") || "");
 
+  // Save token to localStorage
   useEffect(() => {
     localStorage.setItem("token", token);
+  }, [token]);
+
+  // Register service worker
+  useEffect(() => {
+    const registerServiceWorker = async () => {
+      try {
+        if (!("serviceWorker" in navigator)) {
+          console.log("Service workers are not supported.");
+          return;
+        }
+
+        await navigator.serviceWorker.register("/sw.js");
+      } catch (error) {
+        console.log("SERVICE WORKER REGISTRATION ERROR:", error);
+      }
+    };
+
+    registerServiceWorker();
+  }, []);
+
+  // Subscribe logged-in customer to push notifications
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    subscribeToPushNotifications(token);
   }, [token]);
 
   return (
