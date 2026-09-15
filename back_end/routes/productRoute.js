@@ -8,7 +8,7 @@ import {
   editReview,
   replyToReview,
   myReview,
-} from "../Controllers/productController.js";
+} from "../controllers/productController.js";
 
 import express from "express";
 

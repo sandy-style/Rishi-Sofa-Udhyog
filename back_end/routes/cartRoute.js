@@ -3,7 +3,7 @@ import {
   addToCart,
   updateCart,
   getCartData,
-} from "../Controllers/cartController.js";
+} from "../controllers/cartController.js";
 
 import authUser from "../middleware/auth.js";
 

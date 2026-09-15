@@ -8,7 +8,7 @@ import {
   resendVerificationCode,
   googleLogin,
   getUserData,
-} from "../Controller/userController.js";
+} from "../controllers/userController.js";
 
 const userRouter = express.Router();
 
