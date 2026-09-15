@@ -7,7 +7,7 @@ import {
   getAdminNotifications,
   getAdminUnreadCount,
   markAdminAsRead,
-} from "../controllers/notificationController.js";
+} from "../Controllers/notificationController.js";
 
 import authUser from "../middleware/auth.js";
 const notificationRouter = express.Router();

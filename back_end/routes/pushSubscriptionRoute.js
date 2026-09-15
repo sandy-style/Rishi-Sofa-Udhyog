@@ -3,7 +3,7 @@ import express from "express";
 import {
   saveSubscription,
   saveAdminSubscription,
-} from "../controllers/pushSubscriptionController.js";
+} from "../Controllers/pushSubscriptionController.js";
 import authUser from "../middleware/auth.js";
 import adminAuth from "../middleware/adminAuth.js";
 const pushSubscriptionRouter = express.Router();
