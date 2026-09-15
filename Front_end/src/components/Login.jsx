@@ -1,22 +1,22 @@
 import React, { useState } from "react";
-import {
-  X,
-  Eye,
-  Mail,
-  LockKeyhole,
-  User,
-  EyeOff,
-  ShieldCheck,
-} from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, X, ArrowLeft } from "lucide-react";
 import { toast } from "react-toastify";
-import { backendUrl } from "../App";
 import axios from "axios";
+import { backendUrl } from "../App";
 import { GoogleLogin } from "@react-oauth/google";
+import Agreement from "./Agreement";
 
 const Login = ({ setShowLogin, setToken }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const [show, setShow] = useState("Register");
+
+  // Agreement popup
+  const [showAgreement, setShowAgreement] = useState(false);
+
+  // Terms checkbox
+  const [terms, setTerms] = useState(false);
 
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -24,91 +24,146 @@ const Login = ({ setShowLogin, setToken }) => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
 
-  // =========================
+  // ============================================
   // REGISTER
-  // =========================
-  const registerHandler = async (e) => {
-    e.preventDefault();
+  // ============================================
 
-    console.log("register triggered");
-
-    if (password !== confirmPassword) {
-      toast.error("Passwords do not match");
-      return;
-    }
-
+  const registerHandler = async () => {
     try {
+      if (!name.trim()) {
+        toast.error("Please enter your name");
+        return;
+      }
+
+      if (!email.trim()) {
+        toast.error("Please enter your email");
+        return;
+      }
+
+      if (!password) {
+        toast.error("Please enter your password");
+        return;
+      }
+
+      if (password !== confirmPassword) {
+        toast.error("Passwords do not match");
+        return;
+      }
+
+      // IMPORTANT:
+      // Native required checkbox validation does not
+      // work here because the button is type="button".
+      if (!terms) {
+        toast.error("Please accept the Terms & Agreement");
+        return;
+      }
+
       const response = await axios.post(backendUrl + "/api/user/register", {
         name,
         email,
         password,
       });
 
-      if (response.data.success && !response.data.verify) {
-        setShow("Verify");
+      if (response.data.success) {
+        if (response.data.verify === false) {
+          setShow("Verify");
+          toast.success(response.data.message);
+        } else {
+          setShow("Login");
+          toast.success(response.data.message);
+        }
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
       console.log(error);
+
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Something went wrong",
+      );
     }
   };
 
-  // =========================
-  // NORMAL LOGIN
-  // =========================
+  // ============================================
+  // LOGIN
+  // ============================================
+
   const loginHandler = async () => {
     try {
+      if (!email.trim()) {
+        toast.error("Please enter your email");
+        return;
+      }
+
+      if (!password) {
+        toast.error("Please enter your password");
+        return;
+      }
+
       const response = await axios.post(backendUrl + "/api/user/login", {
         email,
         password,
       });
 
       if (response.data.success) {
-        setToken(response.data.token);
+        if (response.data.verify === false) {
+          setShow("Verify");
+          toast.info(response.data.message || "Please verify your email");
+          return;
+        }
+
+        const token = response.data.token;
+
+        localStorage.setItem("token", token);
+        setToken(token);
         setShowLogin(false);
 
-        toast.success(response.data.message);
-
-        // No page reload here.
-        // App.jsx will receive the new token and
-        // automatically start the push subscription.
-      } else if (!response.data.success && response.data.verify === false) {
-        setShow("Verify");
+        toast.success(response.data.message || "Login successful");
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
-
       console.log(error);
+
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Something went wrong",
+      );
     }
   };
 
-  // =========================
+  // ============================================
   // GOOGLE LOGIN
-  // =========================
+  // ============================================
+
   const googleLoginHandler = async (credentialResponse) => {
     try {
+      if (!credentialResponse?.credential) {
+        toast.error("Google login failed");
+        return;
+      }
+
       const response = await axios.post(backendUrl + "/api/user/google", {
         credential: credentialResponse.credential,
       });
 
       if (response.data.success) {
-        setToken(response.data.token);
+        const token = response.data.token;
+
+        localStorage.setItem("token", token);
+        setToken(token);
         setShowLogin(false);
 
-        toast.success(response.data.message);
-
-        // No page reload here.
-        // App.jsx will receive the new token and
-        // automatically start the push subscription.
+        toast.success(response.data.message || "Google login successful");
+        window.location.reload();
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      console.log("Google login error:", error);
+      console.log(error);
 
       toast.error(
         error.response?.data?.message || error.message || "Google login failed",
@@ -116,44 +171,60 @@ const Login = ({ setShowLogin, setToken }) => {
     }
   };
 
-  // =========================
-  // EMAIL VERIFICATION
-  // =========================
-  const verificationHandler = async (e) => {
-    e.preventDefault();
+  // ============================================
+  // VERIFY EMAIL
+  // ============================================
 
+  const verificationHandler = async () => {
     try {
+      if (!verificationCode.trim()) {
+        toast.error("Please enter the verification code");
+        return;
+      }
+
       const response = await axios.post(backendUrl + "/api/user/verify-email", {
         email,
         verificationCode,
       });
-
       if (response.data.success) {
-        setToken(response.data.token);
+        const token = response.data.token;
+
+        localStorage.setItem("token", token);
+        setToken(token);
         setShowLogin(false);
 
+        // Clear form
         setName("");
         setEmail("");
         setPassword("");
         setConfirmPassword("");
         setVerificationCode("");
-
-        toast.success(response.data.message);
+        setTerms(false);
+        window.location.reload();
+        toast.success(response.data.message || "Email verified successfully");
       } else {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
-
       console.log(error);
+
+      toast.error(
+        error.response?.data?.message || error.message || "Verification failed",
+      );
     }
   };
 
-  // =========================
+  // ============================================
   // RESEND VERIFICATION CODE
-  // =========================
+  // ============================================
+
   const resendVerificationCodeHandler = async () => {
     try {
+      if (!email.trim()) {
+        toast.error("Email is required");
+        return;
+      }
+
       const response = await axios.post(backendUrl + "/api/user/resend-code", {
         email,
       });
@@ -164,481 +235,449 @@ const Login = ({ setShowLogin, setToken }) => {
         toast.error(response.data.message);
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      console.log(error);
+
+      toast.error(
+        error.response?.data?.message ||
+          error.message ||
+          "Unable to resend verification code",
+      );
     }
   };
 
-  // =========================
-  // LOGIN SCREEN
-  // =========================
-  switch (show) {
-    case "Login":
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowLogin(false)}
-              className="absolute top-5 right-5 text-gray-400 hover:text-black transition"
-            >
-              <X size={21} />
-            </button>
+  // ============================================
+  // SWITCH REGISTER / LOGIN
+  // ============================================
 
-            <div className="px-8 sm:px-10 py-10">
-              {/* Heading */}
-              <div className="text-center mb-8">
-                <h1 className="text-3xl font-medium tracking-tight text-gray-900">
-                  Welcome Back
-                </h1>
+  const switchMode = (mode) => {
+    setShow(mode);
 
-                <p className="mt-2 text-sm text-gray-500">
-                  Login to continue shopping with us
+    // Reset terms when switching away from register
+    if (mode !== "Register") {
+      setTerms(false);
+    }
+  };
+
+  return (
+    <>
+      {/* ========================================
+          LOGIN / REGISTER MODAL
+      ======================================== */}
+
+      <div className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/50 px-4 backdrop-blur-[2px]">
+        <div className="relative w-full max-w-md overflow-hidden rounded-3xl border border-[#E5DDD3] bg-[#F8F5F0] shadow-[0_25px_80px_rgba(59,43,32,0.25)]">
+          {/* CLOSE BUTTON */}
+
+          <button
+            type="button"
+            onClick={() => setShowLogin(false)}
+            className="absolute right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#3B2B20] shadow-sm transition hover:bg-[#3B2B20] hover:text-white"
+            aria-label="Close"
+          >
+            <X size={18} />
+          </button>
+
+          {/* ==================================
+              VERIFY EMAIL
+          ================================== */}
+
+          {show === "Verify" ? (
+            <div className="p-7 sm:p-8">
+              <button
+                type="button"
+                onClick={() => switchMode("Login")}
+                className="mb-6 flex items-center gap-2 text-sm text-[#7E746D] transition hover:text-[#3B2B20]"
+              >
+                <ArrowLeft size={16} />
+                Back to Login
+              </button>
+
+              <div className="mb-7">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#B07B45]">
+                  RSU Furniture
+                </p>
+
+                <h2 className="font-['Cormorant_Garamond'] text-4xl font-semibold text-[#3B2B20]">
+                  Verify Email
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-[#7E746D]">
+                  We have sent a verification code to your email address.
                 </p>
               </div>
 
-              {/* Form */}
               <div className="space-y-5">
-                {/* Email */}
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Email Address
-                  </label>
-
-                  <div className="relative">
-                    <Mail
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      type="email"
-                      placeholder="Enter your email"
-                      className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <label className="text-sm font-medium text-gray-700">
-                      Password
-                    </label>
-
-                    <button
-                      type="button"
-                      className="text-xs text-gray-500 hover:text-black transition"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-
-                  <div className="relative">
-                    <LockKeyhole
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Enter your password"
-                      className="w-full h-12 pl-11 pr-11 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Remember Me */}
-                <div className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id="remember"
-                    className="w-4 h-4 accent-black"
+                <div className="relative">
+                  <Mail
+                    size={18}
+                    className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
                   />
 
-                  <label htmlFor="remember" className="text-sm text-gray-500">
-                    Remember me
-                  </label>
-                </div>
-
-                {/* Login Button */}
-                <button
-                  type="button"
-                  onClick={loginHandler}
-                  className="w-full h-12 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition"
-                >
-                  Login
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-4 my-7">
-                <div className="flex-1 h-px bg-gray-200" />
-
-                <span className="text-xs text-gray-400">OR</span>
-
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              {/* Google Login */}
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={googleLoginHandler}
-                  onError={() => {
-                    toast.error("Google login failed");
-                  }}
-                  width="100%"
-                />
-              </div>
-
-              {/* Create Account */}
-              <p className="text-center text-sm text-gray-500 mt-7">
-                Don't have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setShow("Register")}
-                  className="font-medium text-black hover:underline"
-                >
-                  Create account
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-
-    // =========================
-    // REGISTER SCREEN
-    // =========================
-    case "Register":
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowLogin(false)}
-              className="absolute top-5 right-5 text-gray-400 hover:text-black transition"
-            >
-              <X size={21} />
-            </button>
-
-            <div className="px-8 sm:px-10 py-9">
-              {/* Heading */}
-              <div className="text-center mb-7">
-                <h1 className="text-3xl font-medium tracking-tight text-gray-900">
-                  Create Account
-                </h1>
-
-                <p className="mt-2 text-sm text-gray-500">
-                  Create your account and start shopping with us
-                </p>
-              </div>
-
-              {/* Form */}
-              <div className="space-y-4">
-                {/* Name */}
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Full Name
-                  </label>
-
-                  <div className="relative">
-                    <User
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      type="text"
-                      placeholder="Enter your full name"
-                      className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Email Address
-                  </label>
-
-                  <div className="relative">
-                    <Mail
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      type="email"
-                      placeholder="Enter your email"
-                      className="w-full h-12 pl-11 pr-4 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
-                      required
-                    />
-                  </div>
-                </div>
-
-                {/* Password */}
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Password
-                  </label>
-
-                  <div className="relative">
-                    <LockKeyhole
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Create a password"
-                      className="w-full h-12 pl-11 pr-11 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
-                      required
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Confirm Password */}
-                <div>
-                  <label className="block mb-2 text-sm font-medium text-gray-700">
-                    Confirm Password
-                  </label>
-
-                  <div className="relative">
-                    <LockKeyhole
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      type={showConfirmPassword ? "text" : "password"}
-                      placeholder="Confirm your password"
-                      className="w-full h-12 pl-11 pr-11 border border-gray-200 rounded-lg text-sm outline-none focus:border-gray-900 transition"
-                      required
-                    />
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setShowConfirmPassword(!showConfirmPassword)
-                      }
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black transition"
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Terms */}
-                <div className="flex items-start gap-2 pt-1">
                   <input
-                    type="checkbox"
-                    id="terms"
-                    className="w-4 h-4 mt-0.5 accent-black"
+                    type="email"
+                    value={email}
+                    readOnly
+                    className="h-12 w-full rounded-xl border border-[#DED7CE] bg-[#EFEAE3] pl-11 pr-4 text-sm text-[#6D655D] outline-none"
                   />
-
-                  <label
-                    htmlFor="terms"
-                    className="text-xs leading-5 text-gray-500"
-                  >
-                    I agree to the{" "}
-                    <span className="text-black font-medium cursor-pointer">
-                      Terms & Conditions
-                    </span>{" "}
-                    and{" "}
-                    <span className="text-black font-medium cursor-pointer">
-                      Privacy Policy
-                    </span>
-                  </label>
                 </div>
 
-                {/* Register Button */}
-                <button
-                  type="button"
-                  onClick={registerHandler}
-                  className="w-full h-12 bg-black text-white rounded-lg text-sm font-medium hover:bg-gray-800 transition mt-2"
-                >
-                  Create Account
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="flex items-center gap-4 my-6">
-                <div className="flex-1 h-px bg-gray-200" />
-
-                <span className="text-xs text-gray-400">OR</span>
-
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
-
-              {/* Google Login */}
-              <div className="flex justify-center">
-                <GoogleLogin
-                  onSuccess={googleLoginHandler}
-                  onError={() => {
-                    toast.error("Google login failed");
-                  }}
-                  width="100%"
+                <input
+                  type="text"
+                  value={verificationCode}
+                  onChange={(e) => setVerificationCode(e.target.value)}
+                  placeholder="Enter verification code"
+                  className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white px-4 text-center text-sm tracking-[0.25em] outline-none transition focus:border-[#B07B45]"
+                  maxLength={6}
                 />
-              </div>
 
-              {/* Login */}
-              <p className="text-center text-sm text-gray-500 mt-6">
-                Already have an account?{" "}
-                <button
-                  type="button"
-                  onClick={() => setShow("Login")}
-                  className="font-medium text-black hover:underline"
-                >
-                  Login
-                </button>
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-
-    // =========================
-    // VERIFY SCREEN
-    // =========================
-    case "Verify":
-      return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4">
-          <div className="relative w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
-            {/* Close Button */}
-            <button
-              onClick={() => setShowLogin(false)}
-              className="absolute right-5 top-5 text-gray-400 transition hover:text-black"
-            >
-              <X size={21} />
-            </button>
-
-            <div className="px-8 py-10 sm:px-10">
-              {/* Icon */}
-              <div className="mb-6 flex justify-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gray-100">
-                  <Mail size={28} className="text-gray-700" />
-                </div>
-              </div>
-
-              {/* Heading */}
-              <div className="mb-8 text-center">
-                <h1 className="text-3xl font-medium tracking-tight text-gray-900">
-                  Verify Your Email
-                </h1>
-
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  We've sent a 6-digit verification code to
-                </p>
-
-                <p className="mt-1 break-all text-sm font-medium text-gray-900">
-                  {email}
-                </p>
-              </div>
-
-              {/* Verification Form */}
-              <div className="space-y-5">
-                {/* Code */}
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-700">
-                    Verification Code
-                  </label>
-
-                  <div className="relative">
-                    <ShieldCheck
-                      size={18}
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      maxLength={6}
-                      value={verificationCode}
-                      onChange={(e) =>
-                        setVerificationCode(e.target.value.replace(/\D/g, ""))
-                      }
-                      placeholder="Enter 6-digit code"
-                      className="h-12 w-full rounded-lg border border-gray-200 pl-11 pr-4 text-center text-lg tracking-[0.4em] outline-none transition focus:border-gray-900"
-                    />
-                  </div>
-                </div>
-
-                {/* Verify Button */}
                 <button
                   type="button"
                   onClick={verificationHandler}
-                  className="h-12 w-full rounded-lg bg-black text-sm font-medium text-white transition hover:bg-gray-800"
+                  className="h-12 w-full rounded-xl bg-[#3B2B20] text-sm font-semibold text-white transition hover:bg-[#B07B45]"
                 >
                   Verify Email
                 </button>
-              </div>
-
-              {/* Resend */}
-              <div className="mt-7 text-center">
-                <p className="text-sm text-gray-500">
-                  Didn't receive the code?
-                </p>
 
                 <button
                   type="button"
                   onClick={resendVerificationCodeHandler}
-                  className="mt-1 text-sm font-medium text-black transition hover:underline"
+                  className="w-full text-sm font-medium text-[#B07B45] transition hover:text-[#3B2B20]"
                 >
-                  Resend Code
-                </button>
-              </div>
-
-              {/* Cancel */}
-              <div className="mt-6 border-t border-gray-100 pt-5 text-center">
-                <button
-                  type="button"
-                  onClick={() => setShowLogin(false)}
-                  className="text-xs text-gray-500 transition hover:text-black"
-                >
-                  Cancel verification
+                  Resend Verification Code
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      );
+          ) : (
+            <>
+              {/* ==================================
+                  HEADER
+              ================================== */}
 
-    default:
-      return null;
-  }
+              <div className="border-b border-[#E5DDD3] bg-[#FBF8F4] px-7 pb-6 pt-8 sm:px-8">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-[#B07B45]">
+                  RSU Furniture
+                </p>
+
+                <h2 className="font-['Cormorant_Garamond'] text-4xl font-semibold text-[#3B2B20]">
+                  {show === "Register" ? "Create Account" : "Welcome Back"}
+                </h2>
+
+                <p className="mt-2 text-sm text-[#7E746D]">
+                  {show === "Register"
+                    ? "Create your RSU account and start shopping."
+                    : "Sign in to continue to your account."}
+                </p>
+              </div>
+
+              {/* ==================================
+                  FORM CONTENT
+              ================================== */}
+
+              <div className="px-7 py-7 sm:px-8">
+                {/* =================================
+                    REGISTER
+                ================================= */}
+
+                {show === "Register" && (
+                  <div className="space-y-4">
+                    {/* NAME */}
+
+                    <div className="relative">
+                      <User
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
+                      />
+
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Full Name"
+                        className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white pl-11 pr-4 text-sm outline-none transition focus:border-[#B07B45]"
+                      />
+                    </div>
+
+                    {/* EMAIL */}
+
+                    <div className="relative">
+                      <Mail
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
+                      />
+
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Email Address"
+                        className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white pl-11 pr-4 text-sm outline-none transition focus:border-[#B07B45]"
+                      />
+                    </div>
+
+                    {/* PASSWORD */}
+
+                    <div className="relative">
+                      <Lock
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
+                      />
+
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                        className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white pl-11 pr-12 text-sm outline-none transition focus:border-[#B07B45]"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7E746D] hover:text-[#3B2B20]"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* CONFIRM PASSWORD */}
+
+                    <div className="relative">
+                      <Lock
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
+                      />
+
+                      <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        placeholder="Confirm Password"
+                        className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white pl-11 pr-12 text-sm outline-none transition focus:border-[#B07B45]"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7E746D] hover:text-[#3B2B20]"
+                      >
+                        {showConfirmPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* TERMS */}
+
+                    <div className="flex items-start gap-3 pt-1">
+                      <input
+                        id="terms"
+                        type="checkbox"
+                        checked={terms}
+                        onChange={(e) => setTerms(e.target.checked)}
+                        className="mt-1 h-4 w-4 cursor-pointer accent-[#3B2B20]"
+                      />
+
+                      <label
+                        htmlFor="terms"
+                        className="text-xs leading-5 text-[#7E746D]"
+                      >
+                        I agree to the{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowAgreement(true)}
+                          className="font-semibold text-[#B07B45] underline underline-offset-2 hover:text-[#3B2B20]"
+                        >
+                          Terms & Conditions
+                        </button>{" "}
+                        and{" "}
+                        <button
+                          type="button"
+                          onClick={() => setShowAgreement(true)}
+                          className="font-semibold text-[#B07B45] underline underline-offset-2 hover:text-[#3B2B20]"
+                        >
+                          Privacy Policy
+                        </button>
+                        .
+                      </label>
+                    </div>
+
+                    {/* REGISTER BUTTON */}
+
+                    <button
+                      type="button"
+                      onClick={registerHandler}
+                      className="h-12 w-full rounded-xl bg-[#3B2B20] text-sm font-semibold text-white transition hover:bg-[#B07B45]"
+                    >
+                      Create Account
+                    </button>
+
+                    {/* GOOGLE */}
+
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-[#E5DDD3]" />
+                      </div>
+
+                      <div className="relative flex justify-center">
+                        <span className="bg-[#F8F5F0] px-3 text-xs text-[#9A9188]">
+                          OR
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={googleLoginHandler}
+                        onError={() => toast.error("Google login failed")}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* SWITCH TO LOGIN */}
+
+                    <p className="pt-2 text-center text-sm text-[#7E746D]">
+                      Already have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => switchMode("Login")}
+                        className="font-semibold text-[#B07B45] hover:text-[#3B2B20]"
+                      >
+                        Login
+                      </button>
+                    </p>
+                  </div>
+                )}
+
+                {/* =================================
+                    LOGIN
+                ================================= */}
+
+                {show === "Login" && (
+                  <div className="space-y-4">
+                    {/* EMAIL */}
+
+                    <div className="relative">
+                      <Mail
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
+                      />
+
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Email Address"
+                        className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white pl-11 pr-4 text-sm outline-none transition focus:border-[#B07B45]"
+                      />
+                    </div>
+
+                    {/* PASSWORD */}
+
+                    <div className="relative">
+                      <Lock
+                        size={18}
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-[#7E746D]"
+                      />
+
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Password"
+                        className="h-12 w-full rounded-xl border border-[#DED7CE] bg-white pl-11 pr-12 text-sm outline-none transition focus:border-[#B07B45]"
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-[#7E746D] hover:text-[#3B2B20]"
+                      >
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* LOGIN BUTTON */}
+
+                    <button
+                      type="button"
+                      onClick={loginHandler}
+                      className="h-12 w-full rounded-xl bg-[#3B2B20] text-sm font-semibold text-white transition hover:bg-[#B07B45]"
+                    >
+                      Login
+                    </button>
+
+                    {/* GOOGLE */}
+
+                    <div className="relative py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-[#E5DDD3]" />
+                      </div>
+
+                      <div className="relative flex justify-center">
+                        <span className="bg-[#F8F5F0] px-3 text-xs text-[#9A9188]">
+                          OR
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-center">
+                      <GoogleLogin
+                        onSuccess={googleLoginHandler}
+                        onError={() => toast.error("Google login failed")}
+                        width="100%"
+                      />
+                    </div>
+
+                    {/* SWITCH TO REGISTER */}
+
+                    <p className="pt-2 text-center text-sm text-[#7E746D]">
+                      Don't have an account?{" "}
+                      <button
+                        type="button"
+                        onClick={() => switchMode("Register")}
+                        className="font-semibold text-[#B07B45] hover:text-[#3B2B20]"
+                      >
+                        Create Account
+                      </button>
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ========================================
+          AGREEMENT POPUP
+      ======================================== */}
+
+      {showAgreement && (
+        <Agreement
+          onClose={() => setShowAgreement(false)}
+          onAccept={() => {
+            // User accepted the agreement
+            setTerms(true);
+
+            // Close agreement popup
+            setShowAgreement(false);
+          }}
+        />
+      )}
+    </>
+  );
 };
 
 export default Login;

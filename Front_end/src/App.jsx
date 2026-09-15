@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -24,7 +24,12 @@ const App = () => {
 
   const [token, setToken] = useState(localStorage.getItem("token") || "");
 
-  // Save token to localStorage
+  const location = useLocation();
+
+  // Check if current page is Agreement
+  const isAgreementPage = location.pathname === "/agreement";
+
+  // Keep token in localStorage
   useEffect(() => {
     localStorage.setItem("token", token);
   }, [token]);
@@ -39,6 +44,8 @@ const App = () => {
         }
 
         await navigator.serviceWorker.register("/sw.js");
+
+        console.log("Service worker registered successfully.");
       } catch (error) {
         console.log("SERVICE WORKER REGISTRATION ERROR:", error);
       }
@@ -47,59 +54,70 @@ const App = () => {
     registerServiceWorker();
   }, []);
 
-  // Subscribe logged-in customer to push notifications
+  // Subscribe user to push notifications
   useEffect(() => {
-    if (!token) {
-      return;
-    }
+    if (!token) return;
 
     subscribeToPushNotifications(token);
   }, [token]);
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FCFAF7] text-[#29231F]">
-      {/* ================= TOAST ================= */}
+      {/* Toast Notifications */}
       <ToastContainer
         position="top-right"
-        autoClose={2500}
+        autoClose={3000}
         hideProgressBar={false}
         newestOnTop
         closeOnClick
         pauseOnHover
+        draggable
         theme="light"
       />
 
-      {/* ================= NAVBAR ================= */}
-      <Navbar setToken={setToken} setShowLogin={setShowLogin} token={token} />
+      {/* Hide Navbar on Agreement Page */}
+      {!isAgreementPage && (
+        <Navbar setToken={setToken} setShowLogin={setShowLogin} token={token} />
+      )}
 
-      {/* ================= PAGE CONTENT ================= */}
+      {/* Main Content */}
       <main className="flex-1 w-full">
         <Routes>
+          {/* Home */}
           <Route path="/" element={<Home />} />
 
+          {/* Collection */}
           <Route path="/collection" element={<Collection />} />
 
+          {/* About */}
           <Route path="/about" element={<About />} />
 
+          {/* Contact */}
           <Route path="/contact" element={<Contact />} />
 
+          {/* Cart */}
           <Route path="/cart" element={<Cart />} />
 
+          {/* Product Details */}
           <Route
             path="/product/:productId"
             element={<Product setShowLogin={setShowLogin} token={token} />}
           />
 
+          {/* Place Order */}
           <Route path="/placeorder" element={<PlaceOrder />} />
 
+          {/* Orders */}
           <Route path="/orders" element={<Orders />} />
+
+          {/* Agreement / Terms */}
         </Routes>
       </main>
 
-      {/* ================= FOOTER ================= */}
-      <Footer />
+      {/* Hide Footer on Agreement Page */}
+      {!isAgreementPage && <Footer />}
 
-      {/* ================= LOGIN MODAL ================= */}
+      {/* Login Modal */}
       {!token && showLogin && (
         <Login setToken={setToken} setShowLogin={setShowLogin} />
       )}

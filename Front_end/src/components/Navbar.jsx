@@ -123,6 +123,56 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
   };
 
   // =========================================================
+  // MARK CUSTOMER NOTIFICATION AS READ
+  // =========================================================
+
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      if (!token || !notificationId) return;
+
+      // Update UI immediately
+      setNotifications((currentNotifications) =>
+        currentNotifications.map((notification) =>
+          notification._id === notificationId
+            ? {
+                ...notification,
+                isRead: true,
+              }
+            : notification,
+        ),
+      );
+
+      // Update unread badge immediately
+      setUnreadCount((currentCount) => Math.max(0, currentCount - 1));
+
+      // Update database
+      const response = await axios.post(
+        backendUrl + "/api/notification/read",
+        {
+          notificationId,
+        },
+        {
+          headers: {
+            token: token,
+          },
+        },
+      );
+
+      // If backend fails, reload actual notification state
+      if (!response.data.success) {
+        await loadNotifications();
+        await loadUnreadCount();
+      }
+    } catch (error) {
+      console.log("MARK NOTIFICATION READ ERROR:", error);
+
+      // Restore actual server state
+      await loadNotifications();
+      await loadUnreadCount();
+    }
+  };
+
+  // =========================================================
   // INITIAL NOTIFICATION LOAD
   // + AUTO REFRESH EVERY 10 SECONDS
   // =========================================================
@@ -221,7 +271,7 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
     setUnreadCount(0);
     setProfileOpen(false);
     setNotificationOpen(false);
-
+    window.location.reload();
     navigate("/");
   };
 
@@ -234,10 +284,22 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
   // =========================================================
 
   const navItems = [
-    { name: "Home", path: "/" },
-    { name: "Collection", path: "/collection" },
-    { name: "About", path: "/about" },
-    { name: "Contact", path: "/contact" },
+    {
+      name: "Home",
+      path: "/",
+    },
+    {
+      name: "Collection",
+      path: "/collection",
+    },
+    {
+      name: "About",
+      path: "/about",
+    },
+    {
+      name: "Contact",
+      path: "/contact",
+    },
   ];
 
   return (
@@ -638,76 +700,72 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                 NOTIFICATIONS
             =================================================== */}
 
-            {/* ===================================================
-    NOTIFICATIONS
-=================================================== */}
-
             {token && (
               <div
                 ref={notificationRef}
                 className="
-      relative
-      z-[60]
-    "
+                  relative
+                  z-[60]
+                "
               >
                 <button
                   type="button"
                   onClick={toggleNotifications}
                   className="
-        group
-        relative
-        flex
-        h-10
-        w-10
-        items-center
-        justify-center
-        rounded-full
-        border
-        border-[#DCCFC3]
-        bg-white/50
-        text-[#594A40]
-        transition-all
-        duration-300
+                    group
+                    relative
+                    flex
+                    h-10
+                    w-10
+                    items-center
+                    justify-center
+                    rounded-full
+                    border
+                    border-[#DCCFC3]
+                    bg-white/50
+                    text-[#594A40]
+                    transition-all
+                    duration-300
 
-        hover:border-[#A97849]
-        hover:bg-[#A97849]
-        hover:text-white
+                    hover:border-[#A97849]
+                    hover:bg-[#A97849]
+                    hover:text-white
 
-        sm:h-11
-        sm:w-11
-      "
+                    sm:h-11
+                    sm:w-11
+                  "
                   aria-label="Notifications"
                 >
                   <FiBell
                     className="
-          text-[17px]
-          transition-transform
-          duration-300
-          group-hover:-translate-y-0.5
-        "
+                      text-[17px]
+                      transition-transform
+                      duration-300
+                      group-hover:-translate-y-0.5
+                    "
                   />
 
                   {unreadCount > 0 && (
                     <span
                       className="
-            absolute
-            -right-1
-            -top-1
-            flex
-            h-[18px]
-            min-w-[18px]
-            items-center
-            justify-center
-            rounded-full
-            bg-[#A97849]
-            px-1
-            font-manrope
-            text-[8px]
-            font-bold
-            text-white
-            ring-2
-            ring-[#FCFAF7]
-          "
+                        absolute
+                        -right-1
+                        -top-1
+                        flex
+                        h-[18px]
+                        min-w-[18px]
+                        items-center
+                        justify-center
+                        rounded-full
+                        bg-[#A97849]
+                        px-1
+                        font-manrope
+                        text-[8px]
+                        font-bold
+                        text-white
+                        ring-2
+                        ring-[#FCFAF7]
+                      "
                     >
                       {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
@@ -717,27 +775,25 @@ const Navbar = ({ setToken, setShowLogin, token }) => {
                 {notificationOpen && (
                   <div
                     className="
-          absolute
-          top-[calc(100%+12px)]
-          
-          /* Mobile */
-          right-[-52px]
-          w-[calc(100vw-24px)]
-          max-w-[380px]
+                      absolute
+                      top-[calc(100%+12px)]
 
-          /* Small screens */
-          sm:right-[-10px]
-          sm:w-[380px]
+                      right-[-52px]
+                      w-[calc(100vw-24px)]
+                      max-w-[380px]
 
-          /* Large screens */
-          lg:right-0
+                      sm:right-[-10px]
+                      sm:w-[380px]
 
-          z-[100]
-        "
+                      lg:right-0
+
+                      z-[100]
+                    "
                   >
                     <Notification
                       notifications={notifications}
                       onClose={() => setNotificationOpen(false)}
+                      onMarkAsRead={markNotificationAsRead}
                     />
                   </div>
                 )}

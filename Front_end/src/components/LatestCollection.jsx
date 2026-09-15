@@ -162,7 +162,7 @@ const LatestCollection = () => {
   // ================= VIEW MORE =================
 
   const handleViewMore = () => {
-    navigate("/collection?sort=New");
+    navigate("/collection");
   };
 
   // ================= CARD SIZE =================

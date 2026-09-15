@@ -284,7 +284,65 @@ const updateStatus = async (req, res) => {
 // ============================================================
 // EXPORT
 // ============================================================
+const deleteOrder = async (req, res) => {
+  try {
+    const { orderId } = req.body;
 
+    // ==============================
+    // VALIDATION
+    // ==============================
+
+    if (!orderId) {
+      return res.json({
+        success: false,
+        message: "Order ID is required",
+      });
+    }
+
+    // ==============================
+    // FIND ORDER
+    // ==============================
+
+    const order = await orderModel.findById(orderId);
+
+    if (!order) {
+      return res.json({
+        success: false,
+        message: "Order not found",
+      });
+    }
+
+    // ==============================
+    // ALLOW DELETE ONLY IF CANCELLED
+    // OR DELIVERED
+    // ==============================
+
+    if (order.status !== "Cancelled" && order.status !== "Delivered") {
+      return res.json({
+        success: false,
+        message: "Only cancelled or delivered orders can be deleted",
+      });
+    }
+
+    // ==============================
+    // DELETE ORDER
+    // ==============================
+
+    await orderModel.findByIdAndDelete(orderId);
+
+    return res.json({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error) {
+    console.log("DELETE ORDER ERROR:", error);
+
+    return res.json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 export {
   placeOrder,
   placeOrderEsewa,
@@ -292,4 +350,5 @@ export {
   allOrders,
   userOrders,
   updateStatus,
+  deleteOrder,
 };

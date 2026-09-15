@@ -40,11 +40,10 @@ const Home = () => {
 
       {/* ================= BEST SELLERS ================= */}
 
-      <BestSellers />
-
       {/* ================= LATEST COLLECTION ================= */}
 
       <LatestCollection />
+      <BestSellers />
 
       <Sofa />
       <Almirah />

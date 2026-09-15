@@ -8,7 +8,7 @@ import {
   FiX,
 } from "react-icons/fi";
 
-const Notification = ({ notifications = [], onClose }) => {
+const Notification = ({ notifications = [], onClose, onMarkAsRead }) => {
   // ================= NOTIFICATION ICON =================
 
   const getNotificationIcon = (type) => {
@@ -61,6 +61,14 @@ const Notification = ({ notifications = [], onClose }) => {
     }
 
     return notificationDate.toLocaleDateString();
+  };
+
+  // ================= MARK AS READ =================
+
+  const handleNotificationClick = (notification) => {
+    if (!notification.isRead && onMarkAsRead) {
+      onMarkAsRead(notification._id);
+    }
   };
 
   return (
@@ -247,6 +255,7 @@ const Notification = ({ notifications = [], onClose }) => {
             <button
               key={notification._id}
               type="button"
+              onClick={() => handleNotificationClick(notification)}
               className={`
                 flex
                 w-full

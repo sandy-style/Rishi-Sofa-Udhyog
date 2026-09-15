@@ -1,251 +1,335 @@
-import React, { useContext, useEffect, useRef, useState } from "react";
-import { ShopContext } from "../context/shopContext";
-import { useNavigate } from "react-router-dom";
-import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
-import ProductCard from "./ProductCard";
+  import React, { useContext, useEffect, useRef, useState } from "react";
+  import { ShopContext } from "../context/shopContext";
+  import { useNavigate } from "react-router-dom";
+  import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
+  import ProductCard from "./ProductCard";
 
-const BestSellers = () => {
-  const { products } = useContext(ShopContext);
-  const navigate = useNavigate();
+  const BestSellers = () => {
+    const { products } = useContext(ShopContext);
+    const navigate = useNavigate();
 
-  const [bestSeller, setBestSeller] = useState([]);
+    const [bestSeller, setBestSeller] = useState([]);
 
-  const sliderRef = useRef(null);
-  const animationRef = useRef(null);
-  const pausedRef = useRef(false);
+    const sliderRef = useRef(null);
+    const animationRef = useRef(null);
+    const pausedRef = useRef(false);
 
-  useEffect(() => {
-    const bestProducts = [...products]
-      .filter((item) => Number(item.soldCount || 0) > 0)
-      .sort((a, b) => Number(b.soldCount || 0) - Number(a.soldCount || 0))
-      .slice(0, 8);
+    // -----------------------------------------
+    // GET BEST SELLERS
+    // -----------------------------------------
+    useEffect(() => {
+      const bestProducts = [...(products || [])]
+        .filter((item) => Number(item?.soldCount || 0) > 0)
+        .sort((a, b) => Number(b?.soldCount || 0) - Number(a?.soldCount || 0))
+        .slice(0, 8);
 
-    setBestSeller(bestProducts);
-  }, [products]);
+      setBestSeller(bestProducts);
+    }, [products]);
 
-  useEffect(() => {
-    const slider = sliderRef.current;
+    // -----------------------------------------
+    // AUTO SLIDER
+    // -----------------------------------------
+    useEffect(() => {
+      const slider = sliderRef.current;
 
-    if (!slider || bestSeller.length === 0) return;
+      if (!slider || bestSeller.length === 0) return;
 
-    let lastTime = performance.now();
-    const speed = 0.055;
+      let lastTime = performance.now();
 
-    const animate = (currentTime) => {
-      const delta = Math.min(currentTime - lastTime, 32);
-      lastTime = currentTime;
+      // Smaller = slower
+      const speed = 0.045;
 
-      if (!pausedRef.current) {
-        const maxScroll = slider.scrollWidth - slider.clientWidth;
+      const animate = (currentTime) => {
+        const delta = Math.min(currentTime - lastTime, 32);
+        lastTime = currentTime;
 
-        if (maxScroll > 0) {
-          slider.scrollLeft += delta * speed;
+        if (!pausedRef.current) {
+          const maxScroll = slider.scrollWidth - slider.clientWidth;
 
-          if (slider.scrollLeft >= maxScroll - 1) {
-            slider.scrollLeft = 0;
+          if (maxScroll > 0) {
+            slider.scrollLeft += delta * speed;
+
+            // Restart from beginning
+            if (slider.scrollLeft >= maxScroll - 1) {
+              slider.scrollLeft = 0;
+            }
           }
         }
-      }
+
+        animationRef.current = requestAnimationFrame(animate);
+      };
 
       animationRef.current = requestAnimationFrame(animate);
+
+      return () => {
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+      };
+    }, [bestSeller]);
+
+    // -----------------------------------------
+    // PAUSE / RESUME
+    // -----------------------------------------
+    const handleMouseEnter = () => {
+      pausedRef.current = true;
     };
 
-    animationRef.current = requestAnimationFrame(animate);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
+    const handleMouseLeave = () => {
+      pausedRef.current = false;
     };
-  }, [bestSeller]);
 
-  const handleMouseEnter = () => {
-    pausedRef.current = true;
-  };
+    const handleTouchStart = () => {
+      pausedRef.current = true;
+    };
 
-  const handleMouseLeave = () => {
-    pausedRef.current = false;
-  };
+    const handleTouchEnd = () => {
+      setTimeout(() => {
+        pausedRef.current = false;
+      }, 700);
+    };
 
-  const handleTouchStart = () => {
-    pausedRef.current = true;
-  };
+    // -----------------------------------------
+    // GET CARD SCROLL WIDTH
+    // -----------------------------------------
+    const getScrollAmount = () => {
+      const slider = sliderRef.current;
 
-  const handleTouchEnd = () => {
-    setTimeout(() => {
-      pausedRef.current = false;
-    }, 500);
-  };
+      if (!slider) return 0;
 
-  const handlePrevious = () => {
-    const slider = sliderRef.current;
+      const card = slider.querySelector("[data-card]");
 
-    if (!slider) return;
+      if (!card) return 0;
 
-    const card = slider.querySelector("[data-card]");
+      const sliderStyles = window.getComputedStyle(slider);
 
-    if (!card) return;
+      const gap =
+        parseFloat(sliderStyles.columnGap) || parseFloat(sliderStyles.gap) || 0;
 
-    pausedRef.current = true;
+      return card.offsetWidth + gap;
+    };
 
-    slider.scrollBy({
-      left: -(card.offsetWidth + 24),
-      behavior: "smooth",
-    });
+    // -----------------------------------------
+    // PREVIOUS
+    // -----------------------------------------
+    const handlePrevious = () => {
+      const slider = sliderRef.current;
 
-    setTimeout(() => {
-      pausedRef.current = false;
-    }, 700);
-  };
+      if (!slider) return;
 
-  const handleNext = () => {
-    const slider = sliderRef.current;
+      pausedRef.current = true;
 
-    if (!slider) return;
+      slider.scrollBy({
+        left: -getScrollAmount(),
+        behavior: "smooth",
+      });
 
-    const card = slider.querySelector("[data-card]");
+      setTimeout(() => {
+        pausedRef.current = false;
+      }, 700);
+    };
 
-    if (!card) return;
+    // -----------------------------------------
+    // NEXT
+    // -----------------------------------------
+    const handleNext = () => {
+      const slider = sliderRef.current;
 
-    pausedRef.current = true;
+      if (!slider) return;
 
-    slider.scrollBy({
-      left: card.offsetWidth + 24,
-      behavior: "smooth",
-    });
+      pausedRef.current = true;
 
-    setTimeout(() => {
-      pausedRef.current = false;
-    }, 700);
-  };
+      slider.scrollBy({
+        left: getScrollAmount(),
+        behavior: "smooth",
+      });
 
-  const renderProduct = (item, index) => (
-    <div
-      key={item._id || index}
-      data-card
-      className="
-        shrink-0
-        min-w-[78%]
+      setTimeout(() => {
+        pausedRef.current = false;
+      }, 700);
+    };
 
-        sm:min-w-[47%]
-
-        md:min-w-[31.5%]
-
-        lg:min-w-[calc(25%-18px)]
-      "
-    >
-      <ProductCard
-        id={item._id}
-        image={item.image?.[0]}
-        name={item.name}
-        price={item.price}
-        description={item.description}
-        offer={item.offer}
-        stock={item.stock}
-        bestSeller={true}
-        category={item.category}
-      />
-    </div>
-  );
-
-  const renderViewMore = () => (
-    <button
-      type="button"
-      data-card
-      onClick={() => navigate("/collection")}
-      className="
-        group
-        flex
-        shrink-0
-        min-w-[78%]
-        items-center
-        justify-center
-        rounded-2xl
-        border
-        border-[#D8C9B8]
-        bg-[#FBF8F4]
-        px-6
-        transition-all
-        duration-500
-
-        hover:-translate-y-1
-        hover:border-[#6A4E3B]
-        hover:bg-[#F2E5D6]
-        hover:shadow-[0_20px_45px_rgba(115,82,45,0.14)]
-
-        sm:min-w-[47%]
-        sm:rounded-[26px]
-
-        md:min-w-[31.5%]
-
-        lg:min-w-[calc(25%-18px)]
-        lg:rounded-[30px]
-      "
-    >
-      <div className="flex flex-col items-center text-center">
+    // -----------------------------------------
+    // PRODUCT CARD
+    // -----------------------------------------
+    const renderProduct = (item, index) => {
+      return (
         <div
+          key={item?._id || index}
+          data-card
           className="
-            mb-5
+            box-border
+            w-[82%]
+            shrink-0
+
+            sm:w-[48%]
+
+            md:w-[32%]
+
+            lg:w-[calc((100%-72px)/4)]
+
+            xl:w-[calc((100%-72px)/4)]
+          "
+        >
+          <ProductCard
+            id={item?._id}
+            image={item?.image?.[0]}
+            name={item?.name}
+            price={item?.price}
+            description={item?.description}
+            offer={item?.offer}
+            stock={item?.stock}
+            bestSeller={true}
+            category={item?.category}
+          />
+        </div>
+      );
+    };
+
+    // -----------------------------------------
+    // VIEW MORE CARD
+    // -----------------------------------------
+    const renderViewMore = () => {
+      return (
+        <button
+          type="button"
+          data-card
+          onClick={() => navigate("/collection")}
+          className="
+            group
+            box-border
             flex
-            h-14
-            w-14
+            w-[82%]
+            shrink-0
             items-center
             justify-center
-            rounded-full
+
+            rounded-2xl
             border
-            border-[#CDBEAE]
-            text-[#6A4E3B]
+            border-[#D8C9B8]
+            bg-[#FBF8F4]
+
+            px-6
+            py-10
+
+            text-center
+
             transition-all
             duration-300
 
-            group-hover:scale-110
-            group-hover:bg-[#6A4E3B]
-            group-hover:text-white
+            hover:-translate-y-1
+            hover:border-[#6A4E3B]
+            hover:bg-[#F2E5D6]
+            hover:shadow-[0_20px_45px_rgba(115,82,45,0.14)]
 
-            sm:h-16
-            sm:w-16
+            sm:w-[48%]
+            sm:rounded-[26px]
+
+            md:w-[32%]
+
+            lg:w-[calc((100%-72px)/4)]
+
+            xl:w-[calc((100%-72px)/4)]
+            xl:rounded-[30px]
           "
         >
-          <FiArrowRight className="text-xl sm:text-2xl" />
-        </div>
+          <div className="flex flex-col items-center">
+            {/* Arrow Circle */}
+            <div
+              className="
+                mb-5
+                flex
+                h-14
+                w-14
+                items-center
+                justify-center
+                rounded-full
+                border
+                border-[#CDBEAE]
+                text-[#6A4E3B]
 
-        <h3 className="font-serif text-lg text-[#3B2B20] sm:text-xl">
-          View More
-        </h3>
+                transition-all
+                duration-300
 
-        <p className="mt-2 max-w-[190px] text-xs leading-5 text-[#806F62]">
-          Explore all our best-selling furniture
-        </p>
-      </div>
-    </button>
-  );
+                group-hover:scale-110
+                group-hover:bg-[#6A4E3B]
+                group-hover:text-white
 
-  if (!bestSeller.length) return null;
+                sm:h-16
+                sm:w-16
+              "
+            >
+              <FiArrowRight className="text-xl sm:text-2xl" />
+            </div>
 
-  return (
-    <section className="my-12 sm:my-16 lg:my-20">
-      <div className="mx-auto max-w-[1550px]">
-        <div
-          className="
-            mb-7
-            flex
-            flex-col
-            gap-5
-            px-4
+            {/* Title */}
+            <h3
+              className="
+                font-serif
+                text-lg
+                font-medium
+                text-[#3B2B20]
 
-            sm:mb-9
-            sm:px-6
+                sm:text-xl
+              "
+            >
+              View More
+            </h3>
 
-            lg:flex-row
-            lg:items-end
-            lg:justify-between
-            lg:px-8
+            {/* Description */}
+            <p
+              className="
+                mt-2
+                max-w-[200px]
+                text-xs
+                leading-5
+                text-[#806F62]
 
-            xl:px-10
-          "
-        >
-          <div className="text-center lg:text-left">
-            <div>
+                sm:text-sm
+              "
+            >
+              Explore all our best-selling furniture
+            </p>
+          </div>
+        </button>
+      );
+    };
+
+    // -----------------------------------------
+    // DON'T RENDER IF EMPTY
+    // -----------------------------------------
+    if (!bestSeller.length) {
+      return null;
+    }
+
+    return (
+      <section className="my-12 w-full sm:my-16 lg:my-20">
+        <div className="mx-auto w-full max-w-[1550px]">
+          {/* =========================================
+              HEADER
+          ========================================= */}
+          <div
+            className="
+              mb-7
+              flex
+              flex-col
+              gap-5
+              px-4
+
+              sm:mb-9
+              sm:px-6
+
+              lg:flex-row
+              lg:items-end
+              lg:justify-between
+              lg:px-8
+
+              xl:px-10
+            "
+          >
+            {/* Heading */}
+            <div className="min-w-0 text-center lg:text-left">
+              {/* Small Label */}
               <div
                 className="
                   mb-3
@@ -257,7 +341,7 @@ const BestSellers = () => {
                   lg:justify-start
                 "
               >
-                <span className="h-px w-10 bg-[#9A795B]" />
+                <span className="h-px w-8 bg-[#9A795B] sm:w-10" />
 
                 <span
                   className="
@@ -274,15 +358,16 @@ const BestSellers = () => {
                   Best Seller
                 </span>
 
-                <span className="h-px w-10 bg-[#C8A77F]" />
+                <span className="h-px w-8 bg-[#C8A77F] sm:w-10" />
               </div>
 
+              {/* Main Heading */}
               <h2
                 className="
                   font-serif
                   text-[30px]
                   font-medium
-                  leading-[1.05]
+                  leading-[1.08]
                   tracking-[-0.035em]
                   text-[#2F241D]
 
@@ -297,160 +382,193 @@ const BestSellers = () => {
                 <br className="hidden sm:block" />
                 <span className="text-[#8A6B50]"> Chosen by You</span>
               </h2>
+
+              {/* Description */}
+              <p
+                className="
+                  mx-auto
+                  mt-3
+                  max-w-2xl
+                  text-xs
+                  leading-5
+                  text-[#7E746D]
+
+                  sm:text-sm
+                  sm:leading-6
+
+                  lg:mx-0
+                  lg:text-base
+                "
+              >
+                Discover our most-loved furniture, crafted with premium materials,
+                timeless design, and exceptional comfort to elevate every space
+                beautifully.
+              </p>
             </div>
 
-            <p
+            {/* Desktop Arrows */}
+            <div
               className="
-                mx-auto
-                mt-3
-                max-w-2xl
-                text-xs
-                leading-5
-                text-[#7E746D]
+                hidden
+                shrink-0
+                items-center
+                gap-3
 
-                sm:text-sm
-                sm:leading-6
-
-                lg:mx-0
-                lg:text-base
+                lg:flex
               "
             >
-              Discover our most-loved furniture, crafted with premium materials,
-              timeless design, and exceptional comfort to elevate every space
-              beautifully.
-            </p>
+              {/* Previous */}
+              <button
+                type="button"
+                onClick={handlePrevious}
+                className="
+                  flex
+                  h-11
+                  w-11
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-[#D8C9B8]
+                  bg-[#FBF8F4]
+                  text-[#6A4E3B]
+
+                  transition-all
+                  duration-300
+
+                  hover:border-[#6A4E3B]
+                  hover:bg-[#6A4E3B]
+                  hover:text-white
+                  hover:shadow-md
+
+                  xl:h-12
+                  xl:w-12
+                "
+                aria-label="Previous products"
+              >
+                <FiArrowLeft className="text-lg" />
+              </button>
+
+              {/* Next */}
+              <button
+                type="button"
+                onClick={handleNext}
+                className="
+                  flex
+                  h-11
+                  w-11
+                  items-center
+                  justify-center
+                  rounded-full
+                  border
+                  border-[#D8C9B8]
+                  bg-[#FBF8F4]
+                  text-[#6A4E3B]
+
+                  transition-all
+                  duration-300
+
+                  hover:border-[#6A4E3B]
+                  hover:bg-[#6A4E3B]
+                  hover:text-white
+                  hover:shadow-md
+
+                  xl:h-12
+                  xl:w-12
+                "
+                aria-label="Next products"
+              >
+                <FiArrowRight className="text-lg" />
+              </button>
+            </div>
           </div>
 
-          <div className="hidden items-center gap-3 lg:flex">
-            <button
-              type="button"
-              onClick={handlePrevious}
-              className="
-                flex
-                h-11
-                w-11
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-[#D8C9B8]
-                bg-[#FBF8F4]
-                text-[#6A4E3B]
-                transition-all
-                duration-300
+          {/* =========================================
+              SLIDER
+          ========================================= */}
+          <div
+            ref={sliderRef}
+            onMouseEnter={handleMouseEnter}
+            onMouseLeave={handleMouseLeave}
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+            className="
+              best-seller-slider
+              flex
+              w-full
+              gap-4
+              overflow-x-auto
+              overflow-y-visible
+              px-4
+              pb-5
+              pt-1
 
-                hover:border-[#6A4E3B]
-                hover:bg-[#6A4E3B]
-                hover:text-white
-                hover:shadow-md
+              sm:gap-5
+              sm:px-6
 
-                xl:h-12
-                xl:w-12
-              "
-              aria-label="Previous products"
-            >
-              <FiArrowLeft className="text-lg" />
-            </button>
+              lg:gap-6
+              lg:px-8
 
-            <button
-              type="button"
-              onClick={handleNext}
-              className="
-                flex
-                h-11
-                w-11
-                items-center
-                justify-center
-                rounded-full
-                border
-                border-[#D8C9B8]
-                bg-[#FBF8F4]
-                text-[#6A4E3B]
-                transition-all
-                duration-300
+              xl:px-10
+            "
+          >
+            {bestSeller.map(renderProduct)}
 
-                hover:border-[#6A4E3B]
-                hover:bg-[#6A4E3B]
-                hover:text-white
-                hover:shadow-md
+            {renderViewMore()}
+          </div>
 
-                xl:h-12
-                xl:w-12
-              "
-              aria-label="Next products"
-            >
-              <FiArrowRight className="text-lg" />
-            </button>
+          {/* =========================================
+              MOBILE SWIPE INDICATOR
+          ========================================= */}
+          <div
+            className="
+              mt-2
+              flex
+              items-center
+              justify-center
+              gap-2
+              px-4
+              text-center
+              text-[10px]
+              font-medium
+              uppercase
+              tracking-[0.18em]
+              text-[#9A8068]
+
+              lg:hidden
+            "
+          >
+            <FiArrowLeft className="shrink-0" />
+
+            <span>Swipe to explore</span>
+
+            <FiArrowRight className="shrink-0" />
           </div>
         </div>
 
-        <div
-          ref={sliderRef}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
-          className="
-            best-seller-slider
-            flex
-            w-full
-            gap-4
-            overflow-x-auto
-            px-4
-            pb-5
+        {/* =========================================
+            HIDE SCROLLBAR
+        ========================================= */}
+        <style>
+          {`
+            .best-seller-slider::-webkit-scrollbar {
+              display: none;
+            }
 
-            sm:gap-5
-            sm:px-6
+            .best-seller-slider {
+              scrollbar-width: none;
+              -ms-overflow-style: none;
+              scroll-behavior: auto;
+              -webkit-overflow-scrolling: touch;
+            }
 
-            lg:gap-6
-            lg:px-8
+            .best-seller-slider > * {
+              min-width: 0;
+            }
+          `}
+        </style>
+      </section>
+    );
+  };
 
-            xl:px-10
-          "
-        >
-          {bestSeller.map((item, index) => renderProduct(item, index))}
-
-          {renderViewMore()}
-        </div>
-
-        <div
-          className="
-            mt-2
-            flex
-            items-center
-            justify-center
-            gap-2
-            text-[10px]
-            font-medium
-            uppercase
-            tracking-[0.18em]
-            text-[#9A8068]
-
-            lg:hidden
-          "
-        >
-          <FiArrowLeft />
-          <span>Swipe to explore</span>
-          <FiArrowRight />
-        </div>
-      </div>
-
-      <style>
-        {`
-          .best-seller-slider::-webkit-scrollbar {
-            display: none;
-          }
-
-          .best-seller-slider {
-            scrollbar-width: none;
-            -ms-overflow-style: none;
-            scroll-behavior: auto;
-            -webkit-overflow-scrolling: touch;
-          }
-        `}
-      </style>
-    </section>
-  );
-};
-
-export default BestSellers;
+  export default BestSellers;

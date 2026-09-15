@@ -138,6 +138,45 @@ const Orders = ({ token }) => {
   };
 
   // ==========================================
+  // DELETE ORDER
+  // ==========================================
+
+  const deleteOrderHandler = async (orderId) => {
+    const confirmed = window.confirm(
+      "Are you sure you want to permanently delete this order?",
+    );
+
+    if (!confirmed) return;
+
+    try {
+      console.log(orderId);
+      const response = await axios.post(
+        backendUrl + "/api/order/delete",
+        { orderId },
+        {
+          headers: { token },
+        },
+      );
+
+      if (response.data.success) {
+        toast.success("Order deleted successfully");
+
+        // Close customer info if this order was open
+        if (showCustomerInfo === orderId) {
+          setShowCustomerInfo(null);
+        }
+
+        // Refresh orders and counts
+        await fetchAllOrders();
+      } else {
+        toast.error(response.data.message);
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || error.message);
+      console.log(error);
+    }
+  };
+  // ==========================================
   // LOAD ORDERS
   // ==========================================
 
@@ -537,6 +576,31 @@ const Orders = ({ token }) => {
 
                         <option value="Cancelled">Cancelled</option>
                       </select>
+                      {(order.status === "Delivered" ||
+                        order.status === "Cancelled") && (
+                        <button
+                          onClick={() => deleteOrderHandler(order._id)}
+                          className="
+      w-full
+      rounded-lg
+      border
+      border-red-200
+      bg-red-50
+      px-4
+      py-2.5
+      text-xs
+      font-semibold
+      text-red-600
+      transition
+      hover:border-red-300
+      hover:bg-red-100
+      hover:text-red-700
+      sm:w-auto
+    "
+                        >
+                          Delete Order
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -652,7 +716,8 @@ const Orders = ({ token }) => {
                         <p>{order.address.street}</p>
 
                         <p>
-                          {order.address.city}, {order.address.province}
+                          {order.address.city},{order.address.district},
+                          {order.address.province}
                         </p>
 
                         <p>{order.address.country}</p>
